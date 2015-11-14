@@ -20,6 +20,7 @@
 #include <linux/slab.h>
 #include <linux/delay.h>
 #include <linux/pci.h>
+#include <linux/pm_runtime.h>
 #include <linux/vga_switcheroo.h>
 #include <acpi/video.h>
 #include <asm/io.h>
@@ -61,6 +62,7 @@ struct apple_gmux_data {
 	enum vga_switcheroo_client_id switch_state_external;
 	enum vga_switcheroo_state power_state;
 	struct completion powerchange_done;
+	struct pci_dev *discrete;
 };
 
 static struct apple_gmux_data *apple_gmux_data;
@@ -364,6 +366,7 @@ static const struct backlight_ops gmux_bl_ops = {
  * On all newer generations, the external port can only be driven by the
  * discrete GPU. If a display is plugged in while the panel is switched to
  * the integrated GPU, *both* GPUs will be in use for maximum performance.
+ * Runtime PM needs to be enabled to resume the discrete GPU on hotplug.
  * To decrease power consumption, the user may manually switch to the
  * discrete GPU, thereby suspending the integrated GPU.
  *
@@ -561,6 +564,7 @@ static void gmux_clear_interrupts(struct apple_gmux_data *gmux_data)
 
 static void gmux_notify_handler(acpi_handle device, u32 value, void *context)
 {
+	int ret;
 	u8 status;
 	struct pnp_dev *pnp = (struct pnp_dev *)context;
 	struct apple_gmux_data *gmux_data = pnp_get_drvdata(pnp);
@@ -574,6 +578,15 @@ static void gmux_notify_handler(acpi_handle device, u32 value, void *context)
 
 	if (status & GMUX_INTERRUPT_STATUS_POWER)
 		complete(&gmux_data->powerchange_done);
+
+	if (status & GMUX_INTERRUPT_STATUS_HOTPLUG &&
+	    gmux_data->switch_state_external == VGA_SWITCHEROO_DIS &&
+	    gmux_data->power_state == VGA_SWITCHEROO_OFF &&
+	    gmux_data->discrete) {
+		ret = pm_request_resume(&gmux_data->discrete->dev);
+		if (ret < 0 && ret != -EINPROGRESS)
+			pr_err("Cannot resume discrete GPU on hotplug\n");
+	}
 }
 
 static int gmux_suspend(struct device *dev)
@@ -612,6 +625,7 @@ static int gmux_probe(struct pnp_dev *pnp, const struct pnp_device_id *id)
 	int ret = -ENXIO;
 	acpi_status status;
 	unsigned long long gpe;
+	struct pci_dev *discrete = NULL;
 
 	if (apple_gmux_data)
 		return -EBUSY;
@@ -746,6 +760,12 @@ static int gmux_probe(struct pnp_dev *pnp, const struct pnp_device_id *id)
 		!bus_for_each_dev(&pci_bus_type, NULL, NULL, is_thunderbolt);
 	if (!gmux_data->external_switchable)
 		gmux_write8(gmux_data, GMUX_PORT_SWITCH_EXTERNAL, 3);
+	while ((discrete = pci_get_class(PCI_CLASS_DISPLAY_VGA << 8, discrete)))
+		if (gmux_get_client_id(discrete) == VGA_SWITCHEROO_DIS &&
+		    !pci_is_thunderbolt_attached(discrete)) {
+			gmux_data->discrete = discrete;
+			break;
+		}
 
 	apple_gmux_data = gmux_data;
 	init_completion(&gmux_data->powerchange_done);
@@ -775,6 +795,7 @@ static int gmux_probe(struct pnp_dev *pnp, const struct pnp_device_id *id)
 err_register_handler:
 	gmux_disable_interrupts(gmux_data);
 	apple_gmux_data = NULL;
+	pci_dev_put(gmux_data->discrete);
 	if (gmux_data->gpe >= 0)
 		acpi_disable_gpe(NULL, gmux_data->gpe);
 err_enable_gpe:
@@ -797,6 +818,7 @@ static void gmux_remove(struct pnp_dev *pnp)
 
 	vga_switcheroo_unregister_handler();
 	gmux_disable_interrupts(gmux_data);
+	pci_dev_put(gmux_data->discrete);
 	if (gmux_data->gpe >= 0) {
 		acpi_disable_gpe(NULL, gmux_data->gpe);
 		acpi_remove_notify_handler(gmux_data->dhandle,
