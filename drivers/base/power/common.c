@@ -13,6 +13,7 @@
 #include <linux/pm_clock.h>
 #include <linux/acpi.h>
 #include <linux/pm_domain.h>
+#include <linux/pm_runtime.h>
 
 #include "power.h"
 
@@ -136,8 +137,10 @@ EXPORT_SYMBOL_GPL(dev_pm_domain_detach);
  * @dev: Device whose PM domain is to be set.
  * @pd: PM domain to be set, or NULL.
  *
- * Sets the PM domain the device belongs to. The PM domain of a device needs
- * to be set before its probe finishes (it's bound to a driver).
+ * Sets the PM domain the device belongs to.  The PM domain of a device needs
+ * to be set while the device is awake.  This is guaranteed during ->probe.
+ * Otherwise the caller is responsible for ensuring wakefulness, e.g. by
+ * holding a runtime PM reference as well as invoking lock_system_sleep().
  *
  * This function must be called with the device lock held.
  */
@@ -146,8 +149,12 @@ void dev_pm_domain_set(struct device *dev, struct dev_pm_domain *pd)
 	if (dev->pm_domain == pd)
 		return;
 
-	WARN(pd && device_is_bound(dev),
-	     "PM domains can only be changed for unbound devices\n");
+	WARN(dev->power.is_prepared || dev->power.is_suspended ||
+	     (pm_runtime_enabled(dev) &&
+	      (dev->power.runtime_status != RPM_ACTIVE ||
+	       (pm_children_suspended(dev) &&
+		!atomic_read(&dev->power.usage_count)))),
+	     "PM domains can only be changed for awake devices\n");
 	dev->pm_domain = pd;
 	device_pm_check_callbacks(dev);
 }
