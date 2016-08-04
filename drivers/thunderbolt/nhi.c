@@ -12,12 +12,14 @@
 #include <linux/slab.h>
 #include <linux/errno.h>
 #include <linux/pci.h>
+#include <linux/platform_data/x86/apple.h>
 #include <linux/interrupt.h>
 #include <linux/module.h>
 #include <linux/delay.h>
 
 #include "nhi.h"
 #include "nhi_regs.h"
+#include "pm_apple.h"
 #include "tb.h"
 
 #define RING_TYPE(ring) ((ring)->is_tx ? "TX ring" : "RX ring")
@@ -924,9 +926,20 @@ static int nhi_runtime_resume(struct device *dev)
 {
 	struct pci_dev *pdev = to_pci_dev(dev);
 	struct tb *tb = pci_get_drvdata(pdev);
+	int ret;
 
 	nhi_enable_int_throttling(tb->nhi);
-	return tb_domain_runtime_resume(tb);
+	ret = tb_domain_runtime_resume(tb);
+
+	/*
+	 * If runtime resuming due to hotplug, it may take about 700 ms
+	 * until the event is received on the control channel.  Wait as
+	 * long even if the user has set a shorter autosuspend delay.
+	 */
+	pm_schedule_suspend(dev, dev->power.autosuspend_delay > 750 ?
+				 dev->power.autosuspend_delay : 750);
+
+	return ret;
 }
 #endif /* CONFIG_PM */
 
@@ -1081,6 +1094,9 @@ static int nhi_probe(struct pci_dev *pdev, const struct pci_device_id *id)
 	pm_runtime_use_autosuspend(&pdev->dev);
 	pm_runtime_put_autosuspend(&pdev->dev);
 
+	if (x86_apple_machine)
+		tb_pm_apple_init(tb);
+
 	return 0;
 }
 
@@ -1088,6 +1104,9 @@ static void nhi_remove(struct pci_dev *pdev)
 {
 	struct tb *tb = pci_get_drvdata(pdev);
 	struct tb_nhi *nhi = tb->nhi;
+
+	if (x86_apple_machine)
+		tb_pm_apple_fini(tb);
 
 	pm_runtime_get_sync(&pdev->dev);
 	pm_runtime_dont_use_autosuspend(&pdev->dev);

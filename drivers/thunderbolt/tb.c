@@ -273,8 +273,11 @@ static void tb_handle_hotplug(struct work_struct *work)
 	struct tb_hotplug_event *ev = container_of(work, typeof(*ev), work);
 	struct tb *tb = ev->tb;
 	struct tb_cm *tcm = tb_priv(tb);
+	struct device *dev = &tb->nhi->pdev->dev;
 	struct tb_switch *sw;
 	struct tb_port *port;
+
+	pm_runtime_get(dev);
 	mutex_lock(&tb->lock);
 	if (!tcm->hotplug_active)
 		goto out; /* during init, suspend or shutdown */
@@ -330,6 +333,8 @@ static void tb_handle_hotplug(struct work_struct *work)
 out:
 	mutex_unlock(&tb->lock);
 	kfree(ev);
+	pm_runtime_mark_last_busy(dev);
+	pm_runtime_put_autosuspend(dev);
 }
 
 /**
@@ -399,6 +404,7 @@ static int tb_start(struct tb *tb)
 	 * root switch.
 	 */
 	tb->root_switch->no_nvm_upgrade = true;
+	tb->root_switch->rpm = x86_apple_machine;
 
 	ret = tb_switch_configure(tb->root_switch);
 	if (ret) {

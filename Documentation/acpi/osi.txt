@@ -184,4 +184,4 @@ The Linux-3.18 change in default caused power regressions on Mac
 laptops, and the 3.18 implementation did not allow changing
 the default via cmdline "acpi_osi=!Darwin".  Linux-4.7 fixed
 the ability to use acpi_osi=!Darwin as a workaround, and
-we hope to see Mac Thunderbolt power management support in Linux-4.11.
+Linux-4.22 added support for Mac Thunderbolt power management.

@@ -68,6 +68,7 @@ enum tb_security_level {
  * @security_level: Current security level
  * @nboot_acl: Number of boot ACLs the domain supports
  * @upstream: Pointer to the PCIe upstream port of this host controller
+ * @pm: Power management data
  * @privdata: Private connection manager specific data
  */
 struct tb {
@@ -82,6 +83,7 @@ struct tb {
 	enum tb_security_level security_level;
 	size_t nboot_acl;
 	struct pci_dev *upstream;
+	struct tb_pm *pm;
 	unsigned long privdata[0];
 };
 
