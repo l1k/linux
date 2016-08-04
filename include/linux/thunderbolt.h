@@ -14,12 +14,14 @@
 #ifndef THUNDERBOLT_H_
 #define THUNDERBOLT_H_
 
+#include <linux/acpi.h>
 #include <linux/device.h>
 #include <linux/idr.h>
 #include <linux/list.h>
 #include <linux/mutex.h>
 #include <linux/mod_devicetable.h>
 #include <linux/pci.h>
+#include <linux/pm_domain.h>
 #include <linux/uuid.h>
 #include <linux/workqueue.h>
 
@@ -54,6 +56,22 @@ enum tb_security_level {
 };
 
 /**
+ * struct tb_pm - Thunderbolt power management data
+ * @tb: Pointer to the Thunderbolt domain this PM data belongs to
+ * @pm_domain: PM domain assigned to controller's PCIe upstream bridge
+ * @wake_gpe: GPE used as hotplug interrupt during powerdown
+ * @set: ACPI method to power controller up/down
+ * @get: ACPI method to query power state of controller
+ */
+struct tb_pm {
+	struct tb *tb;
+	struct dev_pm_domain pm_domain;
+	unsigned long long wake_gpe;
+	acpi_handle set;
+	acpi_handle get;
+};
+
+/**
  * struct tb - main thunderbolt bus structure
  * @dev: Domain device
  * @lock: Big lock. Must be held when accessing any struct
@@ -66,6 +84,7 @@ enum tb_security_level {
  * @index: Linux assigned domain number
  * @security_level: Current security level
  * @upstream: Pointer to the PCIe upstream port of this host controller
+ * @pm: Power management data
  * @privdata: Private connection manager specific data
  */
 struct tb {
@@ -79,6 +98,9 @@ struct tb {
 	int index;
 	enum tb_security_level security_level;
 	struct pci_dev *upstream;
+#if IS_ENABLED(CONFIG_ACPI) && IS_ENABLED(CONFIG_PM)
+	struct tb_pm *pm;
+#endif
 	unsigned long privdata[0];
 };
 

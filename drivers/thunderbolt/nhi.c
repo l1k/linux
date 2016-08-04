@@ -11,12 +11,14 @@
 #include <linux/slab.h>
 #include <linux/errno.h>
 #include <linux/pci.h>
+#include <linux/platform_data/x86/apple.h>
 #include <linux/interrupt.h>
 #include <linux/module.h>
 #include <linux/delay.h>
 
 #include "nhi.h"
 #include "nhi_regs.h"
+#include "pm_apple.h"
 #include "tb.h"
 
 #define RING_TYPE(ring) ((ring)->is_tx ? "TX ring" : "RX ring")
@@ -1062,6 +1064,9 @@ static int nhi_probe(struct pci_dev *pdev, const struct pci_device_id *id)
 	if (nhi->downstream0)
 		pci_walk_bus(nhi->downstream0->bus, nhi_device_link_add, nhi);
 
+	if (x86_apple_machine)
+		tb_pm_apple_init(tb);
+
 	return 0;
 }
 
@@ -1073,6 +1078,9 @@ static void nhi_remove(struct pci_dev *pdev)
 
 	list_for_each_entry_safe(link, ln, &pdev->dev.links.consumers, s_node)
 		device_link_del(link);
+
+	if (x86_apple_machine)
+		tb_pm_apple_fini(tb);
 
 	tb_domain_remove(tb);
 	nhi_shutdown(nhi);
