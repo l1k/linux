@@ -9,6 +9,7 @@
 #include <linux/errno.h>
 #include <linux/delay.h>
 #include <linux/platform_data/x86/apple.h>
+#include <linux/pm_runtime.h>
 
 #include "tb.h"
 #include "tb_regs.h"
@@ -242,8 +243,11 @@ static void tb_handle_hotplug(struct work_struct *work)
 	struct tb_hotplug_event *ev = container_of(work, typeof(*ev), work);
 	struct tb *tb = ev->tb;
 	struct tb_cm *tcm = tb_priv(tb);
+	struct device *dev = &tb->nhi->pdev->dev;
 	struct tb_switch *sw;
 	struct tb_port *port;
+
+	pm_runtime_get(dev);
 	mutex_lock(&tb->lock);
 	if (!tcm->hotplug_active)
 		goto out; /* during init, suspend or shutdown */
@@ -299,6 +303,8 @@ static void tb_handle_hotplug(struct work_struct *work)
 out:
 	mutex_unlock(&tb->lock);
 	kfree(ev);
+	pm_runtime_mark_last_busy(dev);
+	pm_runtime_put_autosuspend(dev);
 }
 
 /**
@@ -434,6 +440,13 @@ static int tb_resume_noirq(struct tb *tb)
 	 /* Allow tb_handle_hotplug to progress events */
 	tcm->hotplug_active = true;
 	tb_info(tb, "resume finished\n");
+
+	/*
+	 * If runtime resuming due to a hotplug event (rather than resuming
+	 * from system sleep), wait for it to arrive. May take about 700 ms.
+	 */
+	if (tb->nhi->pdev->dev.power.runtime_status == RPM_RESUMING)
+		msleep(1000);
 
 	return 0;
 }

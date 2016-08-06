@@ -8,6 +8,7 @@
 #include <linux/delay.h>
 #include <linux/idr.h>
 #include <linux/nvmem-provider.h>
+#include <linux/pm_runtime.h>
 #include <linux/sizes.h>
 #include <linux/slab.h>
 #include <linux/vmalloc.h>
@@ -999,6 +1000,9 @@ static void tb_switch_release(struct device *dev)
 {
 	struct tb_switch *sw = tb_to_switch(dev);
 
+	if (tb_route(sw))
+		pm_runtime_put_autosuspend(&sw->tb->nhi->pdev->dev);
+
 	dma_port_free(sw->dma_port);
 
 	kfree(sw->uuid);
@@ -1123,6 +1127,8 @@ struct tb_switch *tb_switch_alloc(struct tb *tb, struct device *parent,
 	sw->dev.type = &tb_switch_type;
 	sw->dev.groups = switch_groups;
 	dev_set_name(&sw->dev, "%u-%llx", tb->index, tb_route(sw));
+	if (route)
+		pm_runtime_get_noresume(&tb->nhi->pdev->dev);
 
 	return sw;
 
@@ -1168,6 +1174,8 @@ tb_switch_alloc_safe_mode(struct tb *tb, struct device *parent, u64 route)
 	sw->dev.type = &tb_switch_type;
 	sw->dev.groups = switch_groups;
 	dev_set_name(&sw->dev, "%u-%llx", tb->index, tb_route(sw));
+	if (route)
+		pm_runtime_get_noresume(&tb->nhi->pdev->dev);
 
 	return sw;
 }

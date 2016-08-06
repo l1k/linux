@@ -296,6 +296,12 @@ void tb_pm_apple_init(struct tb *tb)
 
 	tb->pm = pm;
 
+	pm_runtime_allow(nhi_dev);
+	pm_runtime_set_autosuspend_delay(nhi_dev, 10000);
+	pm_runtime_use_autosuspend(nhi_dev);
+	pm_runtime_mark_last_busy(nhi_dev);
+	pm_runtime_put_autosuspend(nhi_dev);
+
 	return;
 
 err_free:
@@ -310,6 +316,9 @@ void tb_pm_apple_fini(struct tb *tb)
 
 	if (!pm)
 		return; /* tb_pm_apple_init() failed */
+
+	pm_runtime_get(nhi_dev);
+	pm_runtime_forbid(nhi_dev);
 
 	tb->pm = NULL;
 	dev_pm_domain_set(&tb->upstream->dev, NULL);

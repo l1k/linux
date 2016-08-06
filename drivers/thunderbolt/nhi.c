@@ -1103,6 +1103,8 @@ static const struct dev_pm_ops nhi_pm_ops = {
 	.freeze = nhi_suspend,
 	.poweroff = nhi_suspend,
 	.complete = nhi_complete,
+	.runtime_suspend = nhi_suspend_noirq,
+	.runtime_resume = nhi_resume_noirq,
 };
 
 static struct pci_device_id nhi_ids[] = {
