@@ -1097,8 +1097,8 @@ static void nhi_remove(struct pci_dev *pdev)
 
 /*
  * The tunneled pci bridges are siblings of us. Use resume_noirq to reenable
- * the tunnels asap. A corresponding pci quirk blocks the downstream bridges
- * resume_noirq until we are done.
+ * the tunnels asap. Device links block the downstream bridges' resume_noirq
+ * until we are done.
  */
 static const struct dev_pm_ops nhi_pm_ops = {
 	.suspend_noirq = nhi_suspend_noirq,

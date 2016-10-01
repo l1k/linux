@@ -10,6 +10,7 @@
 #include <linux/delay.h>
 #include <linux/irq.h>
 #include <linux/platform_data/x86/apple.h>
+#include <linux/pm_runtime.h>
 
 #include "tb.h"
 #include "tb_regs.h"
@@ -475,6 +476,37 @@ static const struct tb_cm_ops tb_cm_ops = {
 	.handle_event = tb_handle_event,
 };
 
+/**
+ * tb_device_link_add() - enforce PM order between NHI and downstream bridges
+ * @dev: child device of controller's upstream bridge
+ * @data: controller's NHI
+ *
+ * Callback invoked by device_for_each_child() to set up a device link from
+ * each hotplug downstream bridge to the NHI.  This forces them to dpm_wait()
+ * in the ->resume_noirq() phase until the NHI has re-established the tunnels.
+ */
+static int tb_device_link_add(struct device *dev, void *data)
+{
+	struct device *nhi_dev = data;
+	struct pci_dev *pdev;
+	u32 flags;
+
+	if (dev->bus != &pci_bus_type)
+		return 0;
+
+	pdev = to_pci_dev(dev);
+	if (pdev->devfn == PCI_DEVFN(0, 0) ||	/* bridge to NHI  */
+	    pdev->devfn == PCI_DEVFN(2, 0))	/* bridge to XHCI */
+		return 0;
+
+	flags = DL_FLAG_PM_RUNTIME | DL_FLAG_AUTOREMOVE_SUPPLIER;
+	if (pm_runtime_active(dev))
+		flags |= DL_FLAG_RPM_ACTIVE;	/* FIXME: racy!   */
+
+	device_link_add(dev, nhi_dev, flags);
+	return 0;
+}
+
 struct tb *tb_probe(struct tb_nhi *nhi)
 {
 	struct tb_cm *tcm;
@@ -493,6 +525,8 @@ struct tb *tb_probe(struct tb_nhi *nhi)
 	tcm = tb_priv(tb);
 	INIT_LIST_HEAD(&tcm->tunnel_list);
 	tcm->pci_notifier.notifier_call = tb_pci_notifier_call;
+	device_for_each_child(&tb->upstream->dev, &tb->nhi->pdev->dev,
+			      tb_device_link_add);
 
 	return tb;
 }
