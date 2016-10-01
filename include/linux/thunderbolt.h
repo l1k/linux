@@ -407,6 +407,7 @@ static inline struct tb_xdomain *tb_service_parent(struct tb_service *svc)
  * @lock: Must be held during ring creation/destruction. Is acquired by
  *	  interrupt_work when dispatching interrupts to individual rings.
  * @pdev: Pointer to the PCI device
+ * @downstream0: Downstream bridge to the NHI
  * @iobase: MMIO space of the NHI
  * @tx_rings: All Tx rings available on this host controller
  * @rx_rings: All Rx rings available on this host controller
@@ -420,6 +421,7 @@ static inline struct tb_xdomain *tb_service_parent(struct tb_service *svc)
 struct tb_nhi {
 	spinlock_t lock;
 	struct pci_dev *pdev;
+	struct pci_dev *downstream0;
 	void __iomem *iobase;
 	struct tb_ring **tx_rings;
 	struct tb_ring **rx_rings;

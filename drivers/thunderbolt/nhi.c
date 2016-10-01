@@ -970,6 +970,24 @@ static int nhi_init_msi(struct tb_nhi *nhi)
 	return 0;
 }
 
+static int nhi_device_link_add(struct pci_dev *pdev, void *ptr)
+{
+	struct tb_nhi *nhi = ptr;
+
+	/*
+	 * Let all downstream bridges of the switch depend on the NHI, except
+	 * for the NHI's parent bridge.  This forces them to dpm_wait() in the
+	 * ->resume_noirq phase until the NHI has re-established the tunnels.
+	 */
+	if (pdev->bus == nhi->downstream0->bus && pdev != nhi->downstream0) {
+		u32 flags = DL_FLAG_STATELESS | DL_FLAG_PM_RUNTIME;
+		if (pm_runtime_active(&pdev->dev))
+			flags |= DL_FLAG_RPM_ACTIVE;
+		device_link_add(&pdev->dev, &nhi->pdev->dev, flags);
+	}
+	return 0;
+}
+
 static int nhi_probe(struct pci_dev *pdev, const struct pci_device_id *id)
 {
 	struct tb_nhi *nhi;
@@ -1040,6 +1058,10 @@ static int nhi_probe(struct pci_dev *pdev, const struct pci_device_id *id)
 	}
 	pci_set_drvdata(pdev, tb);
 
+	nhi->downstream0 = pci_upstream_bridge(pdev);
+	if (nhi->downstream0)
+		pci_walk_bus(nhi->downstream0->bus, nhi_device_link_add, nhi);
+
 	return 0;
 }
 
@@ -1047,6 +1069,10 @@ static void nhi_remove(struct pci_dev *pdev)
 {
 	struct tb *tb = pci_get_drvdata(pdev);
 	struct tb_nhi *nhi = tb->nhi;
+	struct device_link *link, *ln;
+
+	list_for_each_entry_safe(link, ln, &pdev->dev.links.consumers, s_node)
+		device_link_del(link);
 
 	tb_domain_remove(tb);
 	nhi_shutdown(nhi);
@@ -1054,8 +1080,8 @@ static void nhi_remove(struct pci_dev *pdev)
 
 /*
  * The tunneled pci bridges are siblings of us. Use resume_noirq to reenable
- * the tunnels asap. A corresponding pci quirk blocks the downstream bridges
- * resume_noirq until we are done.
+ * the tunnels asap. Device links block the downstream bridges' resume_noirq
+ * until we are done.
  */
 static const struct dev_pm_ops nhi_pm_ops = {
 	.suspend_noirq = nhi_suspend_noirq,
