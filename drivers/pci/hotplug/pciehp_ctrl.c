@@ -17,6 +17,7 @@
 #include <linux/kernel.h>
 #include <linux/types.h>
 #include <linux/slab.h>
+#include <linux/pm_runtime.h>
 #include <linux/pci.h>
 #include "../pci.h"
 #include "pciehp.h"
@@ -302,7 +303,9 @@ int pciehp_enable_slot(struct slot *slot)
 	struct controller *ctrl = slot->ctrl;
 	int ret;
 
+	pm_runtime_get_sync(&ctrl->pcie->port->dev);
 	ret = __pciehp_enable_slot(slot);
+	pm_runtime_put(&ctrl->pcie->port->dev);
 
 	if (ret && ATTN_BUTTN(ctrl))
 		pciehp_green_led_off(slot); /* may be blinking */
@@ -334,9 +337,12 @@ static int __pciehp_disable_slot(struct slot *p_slot)
 
 int pciehp_disable_slot(struct slot *slot)
 {
+	struct controller *ctrl = slot->ctrl;
 	int ret;
 
+	pm_runtime_get_sync(&ctrl->pcie->port->dev);
 	ret = __pciehp_disable_slot(slot);
+	pm_runtime_put(&ctrl->pcie->port->dev);
 
 	mutex_lock(&slot->lock);
 	slot->state = OFF_STATE;
