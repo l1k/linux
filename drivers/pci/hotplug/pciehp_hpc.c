@@ -185,13 +185,22 @@ out:
  */
 static void pcie_write_cmd(struct controller *ctrl, u16 cmd, u16 mask)
 {
+	struct device *dev = &ctrl_dev(ctrl)->dev;
+
+	pm_runtime_get_sync(dev);
 	pcie_do_write_cmd(ctrl, cmd, mask, true);
+	pm_runtime_put(dev);
 }
 
 /* Same as above without waiting for the hardware to latch */
 static void pcie_write_cmd_nowait(struct controller *ctrl, u16 cmd, u16 mask)
 {
+	struct device *dev = &ctrl_dev(ctrl)->dev;
+
+	pm_runtime_get_sync(dev);
 	pcie_do_write_cmd(ctrl, cmd, mask, false);
+	pm_runtime_put_noidle(dev);
+	pm_schedule_suspend(dev, 1000);
 }
 
 bool pciehp_check_link_active(struct controller *ctrl)
