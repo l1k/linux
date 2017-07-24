@@ -38,12 +38,8 @@
 #include <linux/gpio/consumer.h>
 #include <linux/gpio/driver.h>
 #include <linux/module.h>
+#include <linux/spi/max3191x.h>
 #include <linux/spi/spi.h>
-
-enum max3191x_mode {
-	STATUS_BYTE_ENABLED,
-	STATUS_BYTE_DISABLED,
-};
 
 /**
  * struct max3191x_chip - max3191x daisy-chain
@@ -327,6 +323,61 @@ static void gpiod_set_array_single_value_cansleep(unsigned int ndescs,
 	gpiod_set_array_value_cansleep(ndescs, desc, values);
 	kfree(values);
 }
+
+/**
+ * max3191x_set_mode() - configure modesel pin of a max3191x daisy-chain
+ * @dev: device
+ * @mode: 0 for 16-bit mode, 1 for 8-bit mode
+ *
+ * Return 0 on success,
+ *        -EAGAIN if the driver has not yet finished probing,
+ *        -EINVAL if @mode argument is invalid or if the modesel pin is not
+ *                configurable (hardwired and not specified in devicetree).
+ */
+int max3191x_set_mode(struct device *dev, enum max3191x_mode mode)
+{
+	struct max3191x_chip *max3191x;
+	struct spi_device *spi;
+	int ret = 0;
+
+	if (mode != STATUS_BYTE_ENABLED && mode != STATUS_BYTE_DISABLED)
+		return -EINVAL;
+
+	device_lock(dev);
+	if (!device_is_bound(dev)) {
+		ret = -EAGAIN;
+		goto out_unlock;
+	}
+
+	spi = to_spi_device(dev);
+	max3191x = spi_get_drvdata(spi);
+	if (max3191x->mode == mode)
+		goto out_unlock;
+	if (!max3191x->modesel_pins) {
+		ret = -EINVAL;
+		goto out_unlock;
+	}
+
+	mutex_lock(&max3191x->lock);
+	max3191x->mode = mode;
+	gpiod_set_array_single_value_cansleep(max3191x->modesel_pins->ndescs,
+					      max3191x->modesel_pins->desc,
+					      mode);
+	max3191x->xfer.len = max3191x->nchips * max3191x_wordlen(max3191x);
+	if (mode == STATUS_BYTE_DISABLED) {
+		/* reset all bitmaps */
+		bitmap_zero(max3191x->crc_error,  max3191x->nchips);
+		bitmap_zero(max3191x->overtemp,   max3191x->nchips);
+		bitmap_zero(max3191x->undervolt1, max3191x->nchips);
+		bitmap_zero(max3191x->undervolt2, max3191x->nchips);
+	}
+	mutex_unlock(&max3191x->lock);
+
+out_unlock:
+	device_unlock(dev);
+	return ret;
+}
+EXPORT_SYMBOL(max3191x_set_mode);
 
 static struct gpio_descs *devm_gpiod_get_array_optional_count(
 				struct device *dev, const char *con_id,
