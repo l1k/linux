@@ -29,6 +29,7 @@
 #include <linux/acpi.h>
 #include <linux/of.h>
 #include <linux/property.h>
+#include <linux/platform_data/x86/apple.h>
 #include <linux/platform_device.h>
 #include <linux/clk.h>
 #include <linux/gpio/consumer.h>
@@ -75,6 +76,9 @@
  * @hu: pointer to HCI UART controller struct,
  *	used to enable flow control during runtime suspend and system sleep
  * @is_suspended: whether flow control is currently enabled
+ * @btlp: Apple ACPI method to toggle BT_WAKE pin ("BlueTooth Low Power")
+ * @btpu: Apple ACPI method to drive BT_REG_ON pin high ("BlueTooth Power Up")
+ * @btpd: Apple ACPI method to drive BT_REG_ON pin low ("BlueTooth Power Down")
  */
 struct bcm_device {
 	/* Must be the first member, hci_serdev.c expects this. */
@@ -98,6 +102,9 @@ struct bcm_device {
 #ifdef CONFIG_PM
 	struct hci_uart		*hu;
 	bool			is_suspended;
+#endif
+#ifdef CONFIG_ACPI
+	acpi_handle		btlp, btpu, btpd;
 #endif
 };
 
@@ -191,11 +198,59 @@ static bool bcm_device_exists(struct bcm_device *device)
 	return false;
 }
 
+#ifdef CONFIG_ACPI
+static int bcm_apple_get_resources(struct bcm_device *dev)
+{
+	struct acpi_device *adev = ACPI_COMPANION(dev->dev);
+	const union acpi_object *obj;
+
+	if (!adev ||
+	    ACPI_FAILURE(acpi_get_handle(adev->handle, "BTLP", &dev->btlp)) ||
+	    ACPI_FAILURE(acpi_get_handle(adev->handle, "BTPU", &dev->btpu)) ||
+	    ACPI_FAILURE(acpi_get_handle(adev->handle, "BTPD", &dev->btpd)))
+		return -ENODEV;
+
+	if (!acpi_dev_get_property(adev, "baud", ACPI_TYPE_BUFFER, &obj) &&
+	    obj->buffer.length == 8)
+		dev->init_speed = *(u64 *)obj->buffer.pointer;
+
+	return 0;
+}
+
+static int bcm_apple_set_power(struct bcm_device *dev, bool enable)
+{
+	if (ACPI_FAILURE(acpi_evaluate_object(enable ? dev->btpu : dev->btpd,
+					      NULL, NULL, NULL)))
+		return -EIO;
+
+	return 0;
+}
+
+static int bcm_apple_set_low_power(struct bcm_device *dev, bool enable)
+{
+	if (ACPI_FAILURE(acpi_execute_simple_method(dev->btlp, NULL, enable)))
+		return -EIO;
+
+	return 0;
+}
+#else
+static inline int bcm_apple_get_resources(struct bcm_device *dev)
+{ return -EOPNOTSUPP; }
+static inline int bcm_apple_set_power(struct bcm_device *dev, bool powered)
+{ return -EOPNOTSUPP; }
+static inline int bcm_apple_set_low_power(struct bcm_device *dev, bool enable)
+{ return -EOPNOTSUPP; }
+#endif
+
 static int bcm_gpio_set_device_wakeup(struct bcm_device *dev, bool awake)
 {
 	int err = 0;
 
-	gpiod_set_value(dev->device_wakeup, awake);
+	if (x86_apple_machine)
+		err = bcm_apple_set_low_power(dev, !awake);
+	else
+		gpiod_set_value(dev->device_wakeup, awake);
+
 	bt_dev_dbg(dev, "%s, delaying 15 ms", awake ? "resume" : "suspend");
 	mdelay(15);
 
@@ -212,7 +267,12 @@ static int bcm_gpio_set_power(struct bcm_device *dev, bool powered)
 			return err;
 	}
 
-	gpiod_set_value(dev->shutdown, powered);
+	if (x86_apple_machine)
+		err = bcm_apple_set_power(dev, powered);
+	else
+		gpiod_set_value(dev->shutdown, powered);
+	if (err)
+		goto err_clk_disable;
 
 	err = bcm_gpio_set_device_wakeup(dev, powered);
 	if (err)
@@ -227,6 +287,7 @@ static int bcm_gpio_set_power(struct bcm_device *dev, bool powered)
 
 err_revert_shutdown:
 	gpiod_set_value(dev->shutdown, !powered);
+err_clk_disable:
 	if (powered && !IS_ERR(dev->clk) && !dev->clk_enabled)
 		clk_disable_unprepare(dev->clk);
 	return err;
@@ -252,6 +313,14 @@ static int bcm_request_irq(struct bcm_data *bcm)
 	mutex_lock(&bcm_device_lock);
 	if (!bcm_device_exists(bdev)) {
 		err = -ENODEV;
+		goto unlock;
+	}
+
+	/* Macs wire the host wake pin to the System Management Controller,
+	 * which handles wakeup independently of the operating system.
+	 */
+	if (x86_apple_machine) {
+		err = 0;
 		goto unlock;
 	}
 
@@ -845,6 +914,9 @@ static int bcm_resource(struct acpi_resource *ares, void *data)
 static int bcm_get_resources(struct bcm_device *dev)
 {
 	dev->name = dev_name(dev->dev);
+
+	if (x86_apple_machine && !bcm_apple_get_resources(dev))
+		return 0;
 
 	dev->clk = devm_clk_get(dev->dev, NULL);
 
