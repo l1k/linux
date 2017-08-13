@@ -29,6 +29,7 @@
 #include <linux/acpi.h>
 #include <linux/of.h>
 #include <linux/property.h>
+#include <linux/platform_data/x86/apple.h>
 #include <linux/platform_device.h>
 #include <linux/clk.h>
 #include <linux/gpio/consumer.h>
@@ -75,6 +76,9 @@ struct bcm_device {
 #ifdef CONFIG_PM
 	struct hci_uart		*hu;
 	bool			is_suspended; /* suspend/resume flag */
+#endif
+#ifdef CONFIG_ACPI
+	acpi_handle		btlp, btpu, btpd;
 #endif
 };
 
@@ -168,8 +172,47 @@ static bool bcm_device_exists(struct bcm_device *device)
 	return false;
 }
 
+#ifdef CONFIG_ACPI
+static int bcm_apple_probe(struct bcm_device *dev)
+{
+	struct acpi_device *adev = ACPI_COMPANION(dev->dev);
+	acpi_handle dev_handle = adev->handle;
+	const union acpi_object *obj;
+
+	if (!acpi_dev_get_property(adev, "baud", ACPI_TYPE_BUFFER, &obj) &&
+	    obj->buffer.length == 8)
+		dev->init_speed = *(u64 *)obj->buffer.pointer;
+
+	return ACPI_SUCCESS(acpi_get_handle(dev_handle, "BTLP", &dev->btlp)) &&
+	       ACPI_SUCCESS(acpi_get_handle(dev_handle, "BTPU", &dev->btpu)) &&
+	       ACPI_SUCCESS(acpi_get_handle(dev_handle, "BTPD", &dev->btpd))
+								 ? 0 : -ENODEV;
+}
+
+static int bcm_apple_set_power(struct bcm_device *dev, bool enable)
+{
+	return ACPI_SUCCESS(acpi_evaluate_object(enable ? dev->btpu : dev->btpd,
+						 NULL, NULL, NULL))
+								 ? 0 : -EFAULT;
+}
+
+static int bcm_apple_set_low_power(struct bcm_device *dev, bool enable)
+{
+	return ACPI_SUCCESS(acpi_execute_simple_method(dev->btlp, NULL, enable))
+								 ? 0 : -EFAULT;
+}
+#else
+static inline int bcm_apple_set_power(struct bcm_device *dev, bool powered)
+{ return -EINVAL; }
+static inline int bcm_apple_set_low_power(struct bcm_device *dev, bool enable)
+{ return -EINVAL; }
+#endif
+
 static int bcm_gpio_set_power(struct bcm_device *dev, bool powered)
 {
+	if (x86_apple_machine)
+		return bcm_apple_set_power(dev, powered);
+
 	if (powered && !IS_ERR(dev->clk) && !dev->clk_enabled)
 		clk_prepare_enable(dev->clk);
 
@@ -182,6 +225,23 @@ static int bcm_gpio_set_power(struct bcm_device *dev, bool powered)
 	dev->clk_enabled = powered;
 
 	return 0;
+}
+
+static int bcm_gpio_set_device_wake(struct bcm_device *dev, bool awake)
+{
+	int err = 0;
+
+	if (x86_apple_machine)
+		err = bcm_apple_set_low_power(dev, !awake);
+	else if (dev->device_wakeup)
+		gpiod_set_value(dev->device_wakeup, awake);
+	else
+		return 0;
+
+	bt_dev_dbg(dev, "%s, delaying 15 ms", awake ? "resume" : "suspend");
+	mdelay(15);
+
+	return err;
 }
 
 #ifdef CONFIG_PM
@@ -209,6 +269,15 @@ static int bcm_request_irq(struct bcm_data *bcm)
 		goto unlock;
 	}
 
+	/*
+	 * Macs wire the host wake pin to the System Management Controller,
+	 * which handles wakeup independently from the operating system.
+	 */
+	if (x86_apple_machine) {
+		err = 0;
+		goto unlock;
+	}
+
 	if (bdev->irq <= 0) {
 		err = -EOPNOTSUPP;
 		goto unlock;
@@ -222,12 +291,6 @@ static int bcm_request_irq(struct bcm_data *bcm)
 		goto unlock;
 
 	device_init_wakeup(bdev->dev, true);
-
-	pm_runtime_set_autosuspend_delay(bdev->dev,
-					 BCM_AUTOSUSPEND_DELAY);
-	pm_runtime_use_autosuspend(bdev->dev);
-	pm_runtime_set_active(bdev->dev);
-	pm_runtime_enable(bdev->dev);
 
 unlock:
 	mutex_unlock(&bcm_device_lock);
@@ -379,7 +442,7 @@ static int bcm_close(struct hci_uart *hu)
 		pm_runtime_disable(bdev->dev);
 		pm_runtime_set_suspended(bdev->dev);
 
-		if (device_can_wakeup(bdev->dev)) {
+		if (bdev->irq > 0) {
 			devm_free_irq(bdev->dev, bdev->irq, bdev);
 			device_init_wakeup(bdev->dev, false);
 		}
@@ -469,6 +532,11 @@ finalize:
 
 	if (!bcm_request_irq(bcm))
 		err = bcm_setup_sleep(hu);
+
+	pm_runtime_set_autosuspend_delay(bcm->dev->dev, BCM_AUTOSUSPEND_DELAY);
+	pm_runtime_use_autosuspend(bcm->dev->dev);
+	pm_runtime_set_active(bcm->dev->dev);
+	pm_runtime_enable(bcm->dev->dev);
 
 	return err;
 }
@@ -577,11 +645,7 @@ static int bcm_suspend_device(struct device *dev)
 	}
 
 	/* Suspend the device */
-	if (bdev->device_wakeup) {
-		gpiod_set_value(bdev->device_wakeup, false);
-		bt_dev_dbg(bdev, "suspend, delaying 15 ms");
-		mdelay(15);
-	}
+	bcm_gpio_set_device_wake(bdev, false);
 
 	return 0;
 }
@@ -592,11 +656,7 @@ static int bcm_resume_device(struct device *dev)
 
 	bt_dev_dbg(bdev, "");
 
-	if (bdev->device_wakeup) {
-		gpiod_set_value(bdev->device_wakeup, true);
-		bt_dev_dbg(bdev, "resume, delaying 15 ms");
-		mdelay(15);
-	}
+	bcm_gpio_set_device_wake(bdev, true);
 
 	/* When this executes, the device has woken up already */
 	if (bdev->is_suspended && bdev->hu) {
@@ -632,7 +692,7 @@ static int bcm_suspend(struct device *dev)
 	if (pm_runtime_active(dev))
 		bcm_suspend_device(dev);
 
-	if (device_may_wakeup(dev)) {
+	if (device_may_wakeup(dev) && bdev->irq > 0) {
 		error = enable_irq_wake(bdev->irq);
 		if (!error)
 			bt_dev_dbg(bdev, "BCM irq: enabled");
@@ -662,7 +722,7 @@ static int bcm_resume(struct device *dev)
 	if (!bdev->hu)
 		goto unlock;
 
-	if (device_may_wakeup(dev)) {
+	if (device_may_wakeup(dev) && bdev->irq > 0) {
 		disable_irq_wake(bdev->irq);
 		bt_dev_dbg(bdev, "BCM irq: disabled");
 	}
@@ -815,6 +875,9 @@ static int bcm_acpi_probe(struct bcm_device *dev)
 	const struct acpi_device_id *id;
 	struct resource_entry *entry;
 	int ret;
+
+	if (x86_apple_machine)
+		return bcm_apple_probe(dev);
 
 	/* Retrieve GPIO data */
 	id = acpi_match_device(dev->dev->driver->acpi_match_table, dev->dev);
