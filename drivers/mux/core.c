@@ -10,6 +10,7 @@
 #define pr_fmt(fmt) "mux-core: " fmt
 
 #include <linux/device.h>
+#include <linux/delay.h>
 #include <linux/err.h>
 #include <linux/export.h>
 #include <linux/idr.h>
@@ -127,6 +128,10 @@ EXPORT_SYMBOL_GPL(mux_chip_alloc);
 static int mux_control_set(struct mux_control *mux, int state)
 {
 	int ret = mux->chip->ops->set(mux, state);
+
+	if (mux->chip->settling_time)
+		usleep_range(mux->chip->settling_time,
+			     mux->chip->settling_time + 50);
 
 	mux->cached_state = ret < 0 ? MUX_CACHE_UNKNOWN : state;
 

@@ -13,6 +13,8 @@ Required properties:
 Optional properties:
 - idle-state : if present, the state the mux will have when idle. The
 	       special state MUX_IDLE_AS_IS is the default.
+- settling-time-us: time required to switch from one stable mux state
+		    to another.
 
 The multiplexer state is defined as the number represented by the
 multiplexer GPIO pins, where the first pin is the least significant
