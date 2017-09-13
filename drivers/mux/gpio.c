@@ -87,6 +87,9 @@ static int mux_gpio_probe(struct platform_device *pdev)
 		mux_chip->mux->idle_state = idle_state;
 	}
 
+	device_property_read_u32(dev, "settling-time-us",
+				 &mux_chip->settling_time);
+
 	ret = devm_mux_chip_register(dev, mux_chip);
 	if (ret < 0)
 		return ret;

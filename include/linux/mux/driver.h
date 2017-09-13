@@ -56,6 +56,9 @@ struct mux_control {
  * @dev:		Device structure.
  * @id:			Used to identify the device internally.
  * @ops:		Mux controller operations.
+ * @settling_time:	Usecs required to switch from one stable mux controller
+ *			state to another.  If nonzero the mux state may only be
+ *			changed from process context.
  */
 struct mux_chip {
 	unsigned int controllers;
@@ -64,6 +67,7 @@ struct mux_chip {
 	int id;
 
 	const struct mux_control_ops *ops;
+	u32 settling_time;
 };
 
 #define to_mux_chip(x) container_of((x), struct mux_chip, dev)
