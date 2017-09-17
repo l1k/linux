@@ -379,6 +379,39 @@ out_unlock:
 }
 EXPORT_SYMBOL(max3191x_set_mode);
 
+/**
+ * max3191x_get_status - retrieve chip status
+ * @dev: device
+ *
+ * Return 0 if chip is healthy, or a bitmask indicating fault conditions.
+ * Currently only the first chip in a daisy chain is considered, which is
+ * sufficient for the RevPi Compact.
+ */
+u8 max3191x_get_status(struct device *dev)
+{
+	struct max3191x_chip *max3191x;
+	struct spi_device *spi;
+	u8 ret;
+
+	device_lock(dev);
+	if (!device_is_bound(dev)) {
+		ret = 0;
+		goto out_unlock;
+	}
+
+	spi = to_spi_device(dev);
+	max3191x = spi_get_drvdata(spi);
+
+	ret = test_bit(0, max3191x->crc_error) << 7 |
+	      test_bit(0, max3191x->overtemp)  << 4 |
+	      test_bit(0, max3191x->fault);
+
+out_unlock:
+	device_unlock(dev);
+	return ret;
+}
+EXPORT_SYMBOL(max3191x_get_status);
+
 static struct gpio_descs *devm_gpiod_get_array_optional_count(
 				struct device *dev, const char *con_id,
 				enum gpiod_flags flags, unsigned int expected)
