@@ -19,5 +19,6 @@ enum max3191x_mode {
 };
 
 int max3191x_set_mode(struct device *dev, enum max3191x_mode mode);
+u8 max3191x_get_status(struct device *dev);
 
 #endif
