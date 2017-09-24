@@ -390,7 +390,12 @@ static int bcm_open(struct hci_uart *hu)
 		 * platform device (saved during device probe) and
 		 * parent of tty device used by hci_uart
 		 */
-		if (hu->tty->dev->parent == dev->dev->parent) {
+
+		/* we shouldn't be needing this commit, so WARN */
+		WARN_ON(hu->tty->dev->parent->parent == dev->dev->parent);
+
+		if (hu->tty->dev->parent == dev->dev->parent ||
+		    hu->tty->dev->parent->parent == dev->dev->parent) {
 			bcm->dev = dev;
 #ifdef CONFIG_PM
 			dev->hu = hu;
