@@ -86,14 +86,14 @@ static LIST_HEAD(bcm_device_list);
 #ifdef CONFIG_ACPI
 static int bcm_apple_set_power(struct bcm_device *dev, bool enable)
 {
-	return ACPI_SUCCESS(acpi_evaluate_object(enable ? dev->btpu : dev->btpd,
+	return ACPI_FAILURE(acpi_evaluate_object(enable ? dev->btpu : dev->btpd,
 						 NULL, NULL, NULL));
 }
 
 static int bcm_apple_set_device_wake(struct bcm_device *dev, bool enable)
 {
-	return ACPI_SUCCESS(acpi_execute_simple_method(dev->btlp,
-						       NULL, enable));
+	return ACPI_FAILURE(acpi_execute_simple_method(dev->btlp,
+						       NULL, enable ? 0 : 1));
 }
 
 static bool bcm_apple_probe(struct bcm_device *dev)
@@ -104,7 +104,8 @@ static bool bcm_apple_probe(struct bcm_device *dev)
 
 	if (!acpi_dev_get_property(adev, "baud", ACPI_TYPE_BUFFER, &obj) &&
 	    obj->buffer.length == 8) {
-		dev->oper_speed = *(u64 *)obj->buffer.pointer;
+		dev->init_speed = *(u64 *)obj->buffer.pointer;
+		dev->oper_speed = dev->init_speed;
 		dev_info(&dev->pdev->dev, "oper_speed=%u\n", dev->oper_speed);
 	}
 
@@ -358,7 +359,8 @@ static int bcm_open(struct hci_uart *hu)
 		 * platform device (saved during device probe) and
 		 * parent of tty device used by hci_uart
 		 */
-		if (hu->tty->dev->parent == dev->pdev->dev.parent) {
+		if (hu->tty->dev->parent == dev->pdev->dev.parent ||
+		    hu->tty->dev->parent->parent == dev->pdev->dev.parent) {
 			bcm->dev = dev;
 			hu->init_speed = dev->init_speed;
 			hu->oper_speed = dev->oper_speed;
