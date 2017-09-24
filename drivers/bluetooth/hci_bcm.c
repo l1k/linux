@@ -386,7 +386,8 @@ static int bcm_open(struct hci_uart *hu)
 		 * platform device (saved during device probe) and
 		 * parent of tty device used by hci_uart
 		 */
-		if (hu->tty->dev->parent == dev->pdev->dev.parent) {
+		if (hu->tty->dev->parent == dev->pdev->dev.parent ||
+		    hu->tty->dev->parent->parent == dev->pdev->dev.parent) {
 			bcm->dev = dev;
 			hu->init_speed = dev->init_speed;
 			hu->oper_speed = dev->oper_speed;
