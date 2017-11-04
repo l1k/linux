@@ -306,7 +306,11 @@ struct pl011_dmatx_data {
  * @rx_fifo_filled: minimum number of currently filled characters in RX FIFO
  *	(set to the programmed fill level on reception of RX interrupt,
  *	decremented for every character read from the FIFO)
+ * @tx_fifo_empty: minimum number of currently empty characters in TX FIFO
+ *	(set to the programmed fill level on reception of TX interrupt,
+ *	decremented for every character read from the FIFO)
  * @pio_rx: RX PIO thread
+ * @pio_tx: TX PIO thread
  * @using_tx_dma: whether TX DMA is enabled
  * @using_rx_dma: whether RX DMA is enabled
  * @dmarx: RX DMA state
@@ -327,7 +331,9 @@ struct uart_amba_port {
 	char			type[12];
 	unsigned int		fifosize;
 	unsigned int		rx_fifo_filled;
+	unsigned int		tx_fifo_empty;
 	struct task_struct	*pio_rx;
+	struct task_struct	*pio_tx;
 #ifdef CONFIG_DMA_ENGINE
 	bool			using_tx_dma;
 	bool			using_rx_dma;
@@ -599,7 +605,6 @@ static void pl011_dma_remove(struct uart_amba_port *uap)
 
 /* Forward declare these for the refill routine */
 static int pl011_dma_tx_refill(struct uart_amba_port *uap);
-static void pl011_start_tx_pio(struct uart_amba_port *uap);
 
 /*
  * The current DMA TX buffer has been sent.
@@ -637,12 +642,16 @@ static void pl011_dma_tx_callback(void *data)
 		return;
 	}
 
-	if (pl011_dma_tx_refill(uap) <= 0)
+	if (pl011_dma_tx_refill(uap) <= 0) {
 		/*
 		 * We didn't queue a DMA buffer for some reason, but we
 		 * have data pending to be sent.  Re-enable the TX IRQ.
 		 */
-		pl011_start_tx_pio(uap);
+		uap->tx_fifo_empty = uap->fifosize >> 1;
+		uap->im |= UART011_TXIM;
+		pl011_write(uap->im, uap, REG_IMSC);
+		wake_up_process(uap->pio_tx);
+	}
 
 	spin_unlock_irqrestore(&uap->port.lock, flags);
 }
@@ -750,44 +759,6 @@ static int pl011_dma_tx_refill(struct uart_amba_port *uap)
 }
 
 /*
- * We received a transmit interrupt without a pending X-char but with
- * pending characters.
- * Locking: called with port lock held and IRQs disabled.
- * Returns:
- *   false if we want to use PIO to transmit
- *   true if we queued a DMA buffer
- */
-static bool pl011_dma_tx_irq(struct uart_amba_port *uap)
-{
-	if (!uap->using_tx_dma)
-		return false;
-
-	/*
-	 * If we already have a TX buffer queued, but received a
-	 * TX interrupt, it will be because we've just sent an X-char.
-	 * Ensure the TX DMA is enabled and the TX IRQ is disabled.
-	 */
-	if (uap->dmatx.queued) {
-		uap->dmacr |= UART011_TXDMAE;
-		pl011_write(uap->dmacr, uap, REG_DMACR);
-		uap->im &= ~UART011_TXIM;
-		pl011_write(uap->im, uap, REG_IMSC);
-		return true;
-	}
-
-	/*
-	 * We don't have a TX buffer queued, so try to queue one.
-	 * If we successfully queued a buffer, mask the TX IRQ.
-	 */
-	if (pl011_dma_tx_refill(uap) > 0) {
-		uap->im &= ~UART011_TXIM;
-		pl011_write(uap->im, uap, REG_IMSC);
-		return true;
-	}
-	return false;
-}
-
-/*
  * Stop the DMA transmit (eg, due to received XOFF).
  * Locking: called with port lock held and IRQs disabled.
  */
@@ -822,9 +793,14 @@ static inline bool pl011_dma_tx_start(struct uart_amba_port *uap)
 			if (pl011_dma_tx_refill(uap) > 0) {
 				uap->im &= ~UART011_TXIM;
 				pl011_write(uap->im, uap, REG_IMSC);
-			} else
+			} else {
+				uap->im |= UART011_TXIM;
+				pl011_write(uap->im, uap, REG_IMSC);
 				ret = false;
-		} else if (!(uap->dmacr & UART011_TXDMAE)) {
+			}
+		} else {
+			uap->im &= ~UART011_TXIM;
+			pl011_write(uap->im, uap, REG_IMSC);
 			uap->dmacr |= UART011_TXDMAE;
 			pl011_write(uap->dmacr, uap, REG_DMACR);
 		}
@@ -845,6 +821,8 @@ static inline bool pl011_dma_tx_start(struct uart_amba_port *uap)
 		 * so we know when there is space.  Note that once we've
 		 * loaded the character, we should just re-enable DMA.
 		 */
+		uap->im |= UART011_TXIM;
+		pl011_write(uap->im, uap, REG_IMSC);
 		return false;
 	}
 
@@ -1315,11 +1293,6 @@ static inline void pl011_dma_shutdown(struct uart_amba_port *uap)
 {
 }
 
-static inline bool pl011_dma_tx_irq(struct uart_amba_port *uap)
-{
-	return false;
-}
-
 static inline void pl011_dma_tx_stop(struct uart_amba_port *uap)
 {
 }
@@ -1359,34 +1332,13 @@ static inline bool pl011_dma_rx_running(struct uart_amba_port *uap)
 #define pl011_dma_flush_buffer	NULL
 #endif
 
-static void pl011_stop_tx(struct uart_port *port)
+static void pl011_wake_pio_tx(struct uart_port *port)
 {
 	struct uart_amba_port *uap =
 	    container_of(port, struct uart_amba_port, port);
 
-	uap->im &= ~UART011_TXIM;
-	pl011_write(uap->im, uap, REG_IMSC);
-	pl011_dma_tx_stop(uap);
-}
-
-static bool pl011_tx_chars(struct uart_amba_port *uap, bool from_irq);
-
-/* Start TX with programmed I/O only (no DMA) */
-static void pl011_start_tx_pio(struct uart_amba_port *uap)
-{
-	if (pl011_tx_chars(uap, false)) {
-		uap->im |= UART011_TXIM;
-		pl011_write(uap->im, uap, REG_IMSC);
-	}
-}
-
-static void pl011_start_tx(struct uart_port *port)
-{
-	struct uart_amba_port *uap =
-	    container_of(port, struct uart_amba_port, port);
-
-	if (!pl011_dma_tx_start(uap))
-		pl011_start_tx_pio(uap);
+	if (!(pl011_read(uap, REG_FR) & UART01x_FR_TXFF))
+		wake_up_process(uap->pio_tx);
 }
 
 static void pl011_stop_rx(struct uart_port *port)
@@ -1408,60 +1360,6 @@ static void pl011_enable_ms(struct uart_port *port)
 
 	uap->im |= UART011_RIMIM|UART011_CTSMIM|UART011_DCDMIM|UART011_DSRMIM;
 	pl011_write(uap->im, uap, REG_IMSC);
-}
-
-static bool pl011_tx_char(struct uart_amba_port *uap, unsigned char c,
-			  bool from_irq)
-{
-	if (unlikely(!from_irq) &&
-	    pl011_read(uap, REG_FR) & UART01x_FR_TXFF)
-		return false; /* unable to transmit character */
-
-	pl011_write(c, uap, REG_DR);
-	uap->port.icount.tx++;
-
-	return true;
-}
-
-/* Returns true if tx interrupts have to be (kept) enabled  */
-static bool pl011_tx_chars(struct uart_amba_port *uap, bool from_irq)
-{
-	struct circ_buf *xmit = &uap->port.state->xmit;
-	int count = uap->fifosize >> 1;
-
-	if (uap->port.x_char) {
-		if (!pl011_tx_char(uap, uap->port.x_char, from_irq))
-			return true;
-		uap->port.x_char = 0;
-		--count;
-	}
-	if (uart_circ_empty(xmit) || uart_tx_stopped(&uap->port)) {
-		pl011_stop_tx(&uap->port);
-		return false;
-	}
-
-	/* If we are using DMA mode, try to send some characters. */
-	if (pl011_dma_tx_irq(uap))
-		return true;
-
-	do {
-		if (likely(from_irq) && count-- == 0)
-			break;
-
-		if (!pl011_tx_char(uap, xmit->buf[xmit->tail], from_irq))
-			break;
-
-		xmit->tail = (xmit->tail + 1) & (UART_XMIT_SIZE - 1);
-	} while (!uart_circ_empty(xmit));
-
-	if (uart_circ_chars_pending(xmit) < WAKEUP_CHARS)
-		uart_write_wakeup(&uap->port);
-
-	if (uart_circ_empty(xmit)) {
-		pl011_stop_tx(&uap->port);
-		return false;
-	}
-	return true;
 }
 
 static void pl011_modem_status(struct uart_amba_port *uap)
@@ -1521,8 +1419,7 @@ static irqreturn_t pl011_int(int irq, void *dev_id)
 		do {
 			check_apply_cts_event_workaround(uap);
 
-			pl011_write(status & ~(UART011_TXIS),
-				    uap, REG_ICR);
+			pl011_write(status, uap, REG_ICR);
 
 			if (status & UART011_RXIS) {
 				uap->rx_fifo_filled = uap->fifosize >> 1;
@@ -1537,8 +1434,11 @@ static irqreturn_t pl011_int(int irq, void *dev_id)
 			if (status & (UART011_DSRMIS|UART011_DCDMIS|
 				      UART011_CTSMIS|UART011_RIMIS))
 				pl011_modem_status(uap);
-			if (status & UART011_TXIS)
-				pl011_tx_chars(uap, true);
+			if (status & UART011_TXIS) {
+				uap->tx_fifo_empty = uap->fifosize >> 1;
+				if (!wake_up_process(uap->pio_tx))
+					wmb();
+			}
 
 			if (pass_counter-- == 0)
 				break;
@@ -1606,6 +1506,81 @@ static unsigned int pl011_tx_empty(struct uart_port *port)
 
 	return status & (uap->vendor->fr_busy | UART01x_FR_TXFF) ?
 							0 : TIOCSER_TEMT;
+}
+
+static int pl011_pio_tx(void *data)
+{
+	struct uart_amba_port *uap = data;
+	struct circ_buf *xmit = &uap->port.state->xmit;
+	bool stopped = true;
+	int ret;
+
+	set_current_state(TASK_IDLE);
+	if (!kthread_should_stop())
+		schedule();
+
+	while (!kthread_should_stop()) {
+		set_current_state(TASK_IDLE);
+
+		if ((uart_circ_empty(xmit) || uart_tx_stopped(&uap->port))
+		    && !uap->port.x_char) {
+			if (!stopped) {
+				pl011_dma_tx_stop(uap);
+				stopped = true;
+			}
+			goto sleep;
+		}
+
+		if (stopped) {
+			if (pl011_tx_empty(&uap->port))
+				uap->tx_fifo_empty = uap->fifosize;
+			stopped = false;
+		}
+
+		if (pl011_dma_tx_start(uap))
+			goto sleep;
+
+		while (!uart_circ_empty(xmit)) {
+			smp_read_barrier_depends(); /* for tx_fifo_empty */
+
+			if (!uap->tx_fifo_empty &&
+			    pl011_read(uap, REG_FR) & UART01x_FR_TXFF) {
+				if (uart_circ_chars_pending(xmit)
+								< WAKEUP_CHARS)
+					uart_write_wakeup(&uap->port);
+				goto sleep;
+			}
+
+			if (uap->port.x_char) {
+				pl011_write(uap->port.x_char, uap, REG_DR);
+				uap->port.icount.tx++;
+				uap->port.x_char = 0;
+				if (uap->tx_fifo_empty)
+					uap->tx_fifo_empty--;
+				continue;
+			}
+
+			if (uart_tx_stopped(&uap->port))
+				break;
+
+			pl011_write(xmit->buf[xmit->tail], uap, REG_DR);
+			smp_store_release(&xmit->tail, (xmit->tail + 1) &
+						       (UART_XMIT_SIZE - 1));
+			uap->port.icount.tx++;
+			if (uap->tx_fifo_empty)
+				uap->tx_fifo_empty--;
+		}
+
+		if (uart_circ_chars_pending(xmit) < WAKEUP_CHARS)
+			uart_write_wakeup(&uap->port);
+
+		continue;
+
+sleep:
+		schedule();
+	}
+
+	return 0;
 }
 
 static unsigned int pl011_get_mctrl(struct uart_port *port)
@@ -1761,10 +1736,23 @@ static int pl011_pio_startup(struct uart_amba_port *uap)
 	if (retval)
 		goto stop_pio_rx;
 
+	uap->pio_tx = kthread_create(&pl011_pio_tx, uap, "pl011_pio_tx");
+	if (IS_ERR(uap->pio_tx)) {
+		retval = PTR_ERR(uap->pio_tx);
+		goto stop_pio_rx;
+	}
+
+	retval = sched_setscheduler_nocheck(uap->pio_tx, SCHED_FIFO, &param);
+	if (retval)
+		goto stop_pio_tx;
+
 	wake_up_process(uap->pio_rx);
+	wake_up_process(uap->pio_tx);
 
 	return 0;
 
+stop_pio_tx:
+	kthread_stop(uap->pio_tx);
 stop_pio_rx:
 	kthread_stop(uap->pio_rx);
 	return retval;
@@ -1866,7 +1854,7 @@ static void pl011_enable_interrupts(struct uart_amba_port *uap)
 		pl011_read(uap, REG_DR);
 	}
 
-	uap->im = UART011_RTIM;
+	uap->im = UART011_RTIM | UART011_TXIM;
 	if (!pl011_dma_rx_running(uap))
 		uap->im |= UART011_RXIM;
 	pl011_write(uap->im, uap, REG_IMSC);
@@ -2010,6 +1998,7 @@ static void pl011_shutdown(struct uart_port *port)
 	pl011_dma_shutdown(uap);
 
 	kthread_stop(uap->pio_rx);
+	kthread_stop(uap->pio_tx);
 
 	free_irq(uap->port.irq, uap);
 
@@ -2042,6 +2031,7 @@ static void sbsa_uart_shutdown(struct uart_port *port)
 	pl011_disable_interrupts(uap);
 
 	kthread_stop(uap->pio_rx);
+	kthread_stop(uap->pio_tx);
 
 	free_irq(uap->port.irq, uap);
 
@@ -2277,8 +2267,8 @@ static const struct uart_ops amba_pl011_pops = {
 	.tx_empty	= pl011_tx_empty,
 	.set_mctrl	= pl011_set_mctrl,
 	.get_mctrl	= pl011_get_mctrl,
-	.stop_tx	= pl011_stop_tx,
-	.start_tx	= pl011_start_tx,
+	.stop_tx	= pl011_wake_pio_tx,
+	.start_tx	= pl011_wake_pio_tx,
 	.stop_rx	= pl011_stop_rx,
 	.enable_ms	= pl011_enable_ms,
 	.break_ctl	= pl011_break_ctl,
@@ -2311,8 +2301,8 @@ static const struct uart_ops sbsa_uart_pops = {
 	.tx_empty	= pl011_tx_empty,
 	.set_mctrl	= sbsa_uart_set_mctrl,
 	.get_mctrl	= sbsa_uart_get_mctrl,
-	.stop_tx	= pl011_stop_tx,
-	.start_tx	= pl011_start_tx,
+	.stop_tx	= pl011_wake_pio_tx,
+	.start_tx	= pl011_wake_pio_tx,
 	.stop_rx	= pl011_stop_rx,
 	.startup	= sbsa_uart_startup,
 	.shutdown	= sbsa_uart_shutdown,
