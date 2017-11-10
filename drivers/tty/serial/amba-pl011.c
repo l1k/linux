@@ -76,7 +76,35 @@ static u16 pl011_std_offsets[REG_ARRAY_SIZE] = {
 	[REG_DMACR] = UART011_DMACR,
 };
 
-/* There is by now at least one vendor with differing details, so handle it */
+/**
+ * struct vendor_data - pl011 vendor-specific quirks
+ * @reg_offset: offset of each register relative to membase of &struct uart_port
+ *	(ST and ZTE use custom offsets)
+ * @ifls: value to assign to Interrupt FIFO Level Select Register to receive an
+ *	interrupt when the TX and RX FIFO is half full
+ *	(ST uses custom values for this register)
+ * @fr_busy: Flag Register "UART busy" bit
+ * @fr_dsr: Flag Register "Data set ready" bit
+ * @fr_cts: Flag Register "Clear to send" bit
+ * @fr_ri: Flag Register "Ring indicator" bit
+ *	(ZTE has shuffled the bits around)
+ * @access_32b: whether register access shall be 32-bit or 16-bit wide
+ *	(SBSA and ZTE use 32-bit, everyone else 16-bit)
+ * @oversampling: whether a baud rate divisor of 8 is supported
+ *	(ST extension, everyone else uses 16)
+ * @dma_threshold: whether DMA burst threshold is supported
+ *	(ST extension)
+ * @cts_event_workaround: whether a CTS interrupt sometimes cannot be cleared,
+ *	requiring a workaround in the interrupt handler
+ *	(ST quirk)
+ * @always_enabled: whether uart cannot be disabled via the Control Register
+ *	(SBSA quirk)
+ * @fixed_options: whether baud rate given on the command line shall be ignored
+ *	(SBSA quirk)
+ * @get_fifosize: calculate number of characters in TX and RX FIFO
+ *	(16 characters for revision r1p0 through r1p4 (including ZTE),
+ *	32 characters for revision r1p5, 64 chararacters for ST)
+ */
 struct vendor_data {
 	const u16		*reg_offset;
 	unsigned int		ifls;
@@ -255,27 +283,49 @@ struct pl011_dmatx_data {
 	bool			queued;
 };
 
-/*
- * We wrap our port structure around the generic uart_port.
+/**
+ * struct uart_amba_port - pl011 uart instance
+ * @port: generic uart_port
+ * @reg_offset: offset of each register relative to @port->membase
+ *	(copied from @vendor to avoid pointer chasing on each register access)
+ * @clk: clock producer for @port->uartclk
+ * @vendor: vendor-specific quirks
+ * @im: cached copy of Interrupt Mask Set/Clear Register
+ * @old_cr: saved copy of Command Register
+ *	(to store RTS and DTR state between ->shutdown and ->startup)
+ * @old_status: saved copy of modem status part of Flag Register
+ *	(to discern which of DCD, DSR and CTS have changed upon a modem status
+ *	interrupt)
+ * @fixed_baud: baud rate specified in device tree
+ *	(only relevant for SBSA uart, the baud rate of which cannot be queried)
+ * @type: identifier set during ->probe and returned by ->type
+ * @fifosize: number of characters in TX and RX FIFO
+ *	(calculated by @vendor->get_fifosize)
+ * @using_tx_dma: whether TX DMA is enabled
+ * @using_rx_dma: whether RX DMA is enabled
+ * @dmarx: RX DMA state
+ * @dmatx: TX DMA state
+ * @dmacr: cached copy of DMA Control Register
+ * @dma_probed: whether DMA has been set up
+ *	(set to true on first succesful invocation from ->startup)
  */
 struct uart_amba_port {
 	struct uart_port	port;
 	const u16		*reg_offset;
 	struct clk		*clk;
 	const struct vendor_data *vendor;
-	unsigned int		dmacr;		/* dma control reg */
-	unsigned int		im;		/* interrupt mask */
+	unsigned int		im;
+	unsigned int		old_cr;
 	unsigned int		old_status;
-	unsigned int		fifosize;	/* vendor-specific */
-	unsigned int		old_cr;		/* state during shutdown */
-	unsigned int		fixed_baud;	/* vendor-set fixed baud rate */
+	unsigned int		fixed_baud;
 	char			type[12];
+	unsigned int		fifosize;
 #ifdef CONFIG_DMA_ENGINE
-	/* DMA stuff */
 	bool			using_tx_dma;
 	bool			using_rx_dma;
 	struct pl011_dmarx_data dmarx;
 	struct pl011_dmatx_data	dmatx;
+	unsigned int		dmacr;
 	bool			dma_probed;
 #endif
 };
