@@ -1158,6 +1158,16 @@ static void pl011_dma_rx_poll(struct timer_list *t)
 	}
 }
 
+static void pl011_dma_rx_start_poll(struct uart_amba_port *uap)
+{
+	if (uap->dmarx.poll_rate) {
+		uap->dmarx.last_jiffies = jiffies;
+		uap->dmarx.last_residue	= PL011_DMA_BUFFER_SIZE;
+		mod_timer(&uap->dmarx.timer,
+			  jiffies + msecs_to_jiffies(uap->dmarx.poll_rate));
+	}
+}
+
 static void pl011_dma_startup(struct uart_amba_port *uap)
 {
 	int ret;
@@ -1223,14 +1233,8 @@ skip_rx:
 		if (pl011_dma_rx_trigger_dma(uap))
 			dev_dbg(uap->port.dev, "could not trigger initial "
 				"RX DMA job, fall back to interrupt mode\n");
-		if (uap->dmarx.poll_rate) {
-			timer_setup(&uap->dmarx.timer, pl011_dma_rx_poll, 0);
-			mod_timer(&uap->dmarx.timer,
-				jiffies +
-				msecs_to_jiffies(uap->dmarx.poll_rate));
-			uap->dmarx.last_residue = PL011_DMA_BUFFER_SIZE;
-			uap->dmarx.last_jiffies = jiffies;
-		}
+		timer_setup(&uap->dmarx.timer, pl011_dma_rx_poll, 0);
+		pl011_dma_rx_start_poll(uap);
 	}
 }
 
@@ -1327,6 +1331,10 @@ static inline int pl011_dma_rx_trigger_dma(struct uart_amba_port *uap)
 	return -EIO;
 }
 
+static inline void pl011_dma_rx_start_poll(struct uart_amba_port *uap)
+{
+}
+
 static inline bool pl011_dma_rx_available(struct uart_amba_port *uap)
 {
 	return false;
@@ -1410,16 +1418,7 @@ __acquires(&uap->port.lock)
 			uap->im |= UART011_RXIM;
 			pl011_write(uap->im, uap, REG_IMSC);
 		} else {
-#ifdef CONFIG_DMA_ENGINE
-			/* Start Rx DMA poll */
-			if (uap->dmarx.poll_rate) {
-				uap->dmarx.last_jiffies = jiffies;
-				uap->dmarx.last_residue	= PL011_DMA_BUFFER_SIZE;
-				mod_timer(&uap->dmarx.timer,
-					jiffies +
-					msecs_to_jiffies(uap->dmarx.poll_rate));
-			}
-#endif
+			pl011_dma_rx_start_poll(uap);
 		}
 	}
 	spin_lock(&uap->port.lock);
