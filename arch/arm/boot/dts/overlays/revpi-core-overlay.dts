@@ -1,0 +1,173 @@
+/*
+ * Device tree overlay for Revolution Pi by KUNBUS
+ *
+ * RevPi Core
+ * RevPi Core 3
+ */
+
+/dts-v1/;
+/plugin/;
+#include <dt-bindings/gpio/gpio.h>
+#include <dt-bindings/pinctrl/bcm2835.h>
+
+/{
+	compatible = "brcm,bcm2835", "brcm,bcm2837";
+
+	fragment@0 {
+		target-path = "/";
+		__overlay__ {
+			compatible = "brcm,bcm2837", "brcm,bcm2836",
+				     "brcm,bcm2835", "kunbus,revpi-core";
+
+			leds {
+				compatible = "gpio-leds";
+				power_red {
+					gpios = <&gpio 16 GPIO_ACTIVE_HIGH>;
+					linux,default-trigger = "power_red";
+				};
+				a1_green {
+					gpios = <&gpio 30 GPIO_ACTIVE_HIGH>;
+					linux,default-trigger = "a1_green";
+				};
+				a1_red {
+					gpios = <&gpio  6 GPIO_ACTIVE_HIGH>;
+					linux,default-trigger = "a1_red";
+				};
+				a2_green {
+					gpios = <&gpio 32 GPIO_ACTIVE_HIGH>;
+					linux,default-trigger = "a2_green";
+				};
+				a2_red {
+					gpios = <&gpio 33 GPIO_ACTIVE_HIGH>;
+					linux,default-trigger = "a2_red";
+				};
+				act {
+					status = "disabled";
+				};
+			};
+		};
+	};
+
+	fragment@1 {
+		target = <&gpio>;
+		__overlay__ {
+			spi0_pins {
+				/* miso mosi clock */
+				brcm,pins     = <37 38 39>;
+				brcm,function = <BCM2835_FSEL_ALT0>;
+				brcm,pull     = <BCM2835_PUD_OFF>;
+			};
+			spi0_cs_pins {
+				brcm,pins     = <36 35>;
+				brcm,function = <BCM2835_FSEL_GPIO_OUT>;
+				brcm,pull     = <BCM2835_PUD_OFF>;
+			};
+			eth1_2_reset_pins {
+				/* resets both chips */
+				brcm,pins     = <40>;
+				brcm,function = <BCM2835_FSEL_GPIO_OUT>;
+				brcm,pull     = <BCM2835_PUD_OFF>;
+			};
+			i2c1 {
+				/* sda scl */
+				brcm,pins     = <44 45>;
+				brcm,function = <BCM2835_FSEL_ALT2>;
+				brcm,pull     = <BCM2835_PUD_OFF>;
+			};
+		};
+	};
+
+	fragment@2 {
+		target = <&i2c1>;
+		__overlay__ {
+			#address-cells = <1>;
+			#size-cells = <0>;
+			status = "okay";
+
+			rtc@51 {
+				compatible = "nxp,pcf2129";
+				reg = <0x51>;
+				status = "okay";
+			};
+
+			crypto@60 {
+				compatible = "atmel,atecc508a";
+				reg = <0x60>;
+				status = "okay";
+			};
+		};
+	};
+
+	fragment@3 {
+		target = <&spidev0>;
+		__overlay__ {
+			status = "disabled";
+		};
+	};
+
+	fragment@4 {
+		target = <&spidev1>;
+		__overlay__ {
+			status = "disabled";
+		};
+	};
+
+	fragment@5 {
+		target = <&spi0>;
+		__overlay__ {
+			cs-gpios = <&gpio 36 GPIO_ACTIVE_LOW>,
+				   <&gpio 35 GPIO_ACTIVE_LOW>;
+			#address-cells = <1>;
+			#size-cells = <0>;
+			status = "okay";
+
+			pileft: ethernet@0 {
+				/* PiBridge Ethernet left */
+				compatible = "micrel,ks8851";
+				reg = <0>;
+				spi-max-frequency = <20000000>;	/* <= 40 MHz */
+				interrupts = <0x80000000>;  /* not connected */
+				status = "okay";
+			};
+
+			piright: ethernet@1 {
+				/* PiBridge Ethernet right */
+				compatible = "micrel,ks8851";
+				reg = <1>;
+				spi-max-frequency = <20000000>;	/* <= 40 MHz */
+				interrupts = <0x80000000>;  /* not connected */
+				reset-gpios = <&gpio 40 GPIO_ACTIVE_LOW>;
+				status = "okay";
+			};
+		};
+	};
+
+	fragment@6 {
+		target = <&usb>;
+		__overlay__ {
+			#address-cells = <1>;
+			#size-cells = <0>;
+
+			hub@1 {
+				compatible = "usb424,9514"; /* SMSC LAN9514 */
+				reg = <1>;
+				#address-cells = <1>;
+				#size-cells = <0>;
+
+				eth0: ethernet@1 {
+					compatible = "usb424,ec00";
+					reg = <1>;
+				};
+			};
+		};
+	};
+
+	__overrides__ {
+		eth0_mac_hi = <&eth0>,"local-mac-address:0";
+		eth0_mac_lo = <&eth0>,"local-mac-address;4";
+		pileft_mac_hi = <&pileft>,"local-mac-address:0";
+		pileft_mac_lo = <&pileft>,"local-mac-address;4";
+		piright_mac_hi = <&piright>,"local-mac-address:0";
+		piright_mac_lo = <&piright>,"local-mac-address;4";
+	};
+};

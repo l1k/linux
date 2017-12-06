@@ -1,0 +1,50 @@
+/*
+ * Device tree overlay for Revolution Pi by KUNBUS
+ *
+ * RevPi CON CAN
+ */
+
+/dts-v1/;
+/plugin/;
+#include <dt-bindings/interrupt-controller/irq.h>
+
+/{
+	compatible = "brcm,bcm2837";
+
+	fragment@0 {
+		target = <&spidev0>;
+		__overlay__ {
+			status = "disabled";
+		};
+	};
+
+	fragment@1 {
+		target-path = "/clocks";
+		__overlay__ {
+			can0_osc: can0_osc {
+				compatible = "fixed-clock";
+				#clock-cells = <0>;
+				clock-frequency	 = <32000000>;
+			};
+		};
+	};
+
+	fragment@2 {
+		target = <&spi0>;
+		__overlay__ {
+			#address-cells = <1>;
+			#size-cells = <0>;
+
+			can@0 {
+				compatible = "holt,hi3110";
+				reg = <0>;
+				spi-max-frequency = <10000000>;	/* <= 20 MHz */
+				clocks = <&can0_osc>;
+				interrupt-parent = <&gpio>;
+				#interrupt-cells = <2>;
+				interrupts = <28 IRQ_TYPE_LEVEL_HIGH>;
+				status = "okay";
+			};
+		};
+	};
+};
