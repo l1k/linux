@@ -1912,6 +1912,60 @@ Params: int_pin                 GPIO pin for interrupt signal (default 23)
         speed                   SPI bus speed (default 12 MHz)
 
 
+Name:   revpi-compact
+Info:   Overlay for RevPi Compact by KUNBUS
+Load:   dtoverlay=revpi-compact
+Params: <None>
+
+
+Name:   revpi-compact-dt-blob
+Info:   dt-blob.bin for RevPi Compact by KUNBUS
+Load:   dtoverlay=revpi-compact-dt-blob
+Params: <None>
+
+
+Name:   revpi-connect
+Info:   Overlay for RevPi Connect by KUNBUS
+Load:   dtoverlay=revpi-connect
+Params: <None>
+
+
+Name:   revpi-connect-dt-blob
+Info:   dt-blob.bin for RevPi Connect by KUNBUS
+Load:   dtoverlay=revpi-connect-dt-blob
+Params: <None>
+
+
+Name:   revpi-con-can
+Info:   Overlay for RevPi CON CAN by KUNBUS
+Load:   dtoverlay=revpi-con-can
+Params: <None>
+
+
+Name:   revpi-flat
+Info:   Overlay for RevPi Flat by KUNBUS
+Load:   dtoverlay=revpi-flat
+Params: <None>
+
+
+Name:   revpi-flat-dt-blob
+Info:   dt-blob.bin for RevPi Flat by KUNBUS
+Load:   dtoverlay=revpi-flat-dt-blob
+Params: <None>
+
+
+Name:   revpi-core
+Info:   Overlay for RevPi Core by KUNBUS
+Load:   dtoverlay=revpi-core
+Params: <None>
+
+
+Name:   revpi-core-dt-blob
+Info:   dt-blob.bin for RevPi Core by KUNBUS
+Load:   dtoverlay=revpi-core-dt-blob
+Params: <None>
+
+
 Name:   rotary-encoder
 Info:   Overlay for GPIO connected rotary encoder.
 Load:   dtoverlay=rotary-encoder,<param>=<val>
