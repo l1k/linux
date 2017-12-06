@@ -1,0 +1,326 @@
+/*
+ * Device tree overlay for Revolution Pi by KUNBUS
+ *
+ * RevPi Compact
+ */
+
+/dts-v1/;
+/plugin/;
+#include <dt-bindings/gpio/gpio.h>
+#include <dt-bindings/interrupt-controller/irq.h>
+#include <dt-bindings/pinctrl/bcm2835.h>
+
+/{
+	compatible = "brcm,bcm2837";
+
+	fragment@0 {
+		target-path = "/";
+		__overlay__ {
+			compatible = "brcm,bcm2837", "brcm,bcm2836",
+				     "kunbus,revpi-compact";
+
+			aout_vref: fixedregulator_2v5x4 {
+				compatible = "regulator-fixed";
+				regulator-name = "2v5_x4_amplified";
+				regulator-min-microvolt = <10000000>;
+				regulator-max-microvolt = <10000000>;
+				regulator-always-on;
+			};
+
+			ain_vref: fixedregulator_2v5x5 {
+				compatible = "regulator-fixed";
+				regulator-name = "2v5_x5_amplified";
+				regulator-min-microvolt = <12500000>;
+				regulator-max-microvolt = <12500000>;
+				regulator-always-on;
+			};
+
+			ain_mux: ain_mux {
+				compatible = "gpio-mux";
+				#mux-control-cells = <0>;
+				mux-gpios = <&gpio  6 GPIO_ACTIVE_HIGH>,
+					    <&gpio 12 GPIO_ACTIVE_HIGH>,
+					    <&gpio 13 GPIO_ACTIVE_HIGH>,
+					    <&gpio 16 GPIO_ACTIVE_HIGH>;
+				/*
+				 * Switching the mux and turning on the RTD
+				 * power source takes a while (< 20 msec).
+				 * The power source should be disabled after
+				 * a measurement to avoid heating up the RTD
+				 * sensor, hence ain0 is used as idle state.
+				 */
+				settling-time-us = <20000>;
+				idle-state = <0>;
+			};
+
+			ain_muxed {
+				compatible = "io-channel-mux";
+				io-channels = <&ain 0>;
+				io-channel-names = "parent";
+				mux-controls = <&ain_mux>;
+				channels = "ain0", "ain1", "ain2", "ain3",
+					   "ain4", "ain5", "ain6", "ain7",
+					   "ain0_rtd", "ain1_rtd", "ain2_rtd",
+					   "ain3_rtd", "ain4_rtd", "ain5_rtd",
+					   "ain6_rtd", "ain7_rtd";
+			};
+
+			leds {
+				compatible = "gpio-leds";
+				power_red {
+					gpios = <&gpio 35 GPIO_ACTIVE_HIGH>;
+					linux,default-trigger = "power_red";
+				};
+				a1_green {
+					gpios = <&gpio 30 GPIO_ACTIVE_HIGH>;
+					linux,default-trigger = "a1_green";
+				};
+				a1_red {
+					gpios = <&gpio 34 GPIO_ACTIVE_HIGH>;
+					linux,default-trigger = "a1_red";
+				};
+				a2_green {
+					gpios = <&gpio 32 GPIO_ACTIVE_HIGH>;
+					linux,default-trigger = "a2_green";
+				};
+				a2_red {
+					gpios = <&gpio 33 GPIO_ACTIVE_HIGH>;
+					linux,default-trigger = "a2_red";
+				};
+				act {
+					status = "disabled";
+				};
+			};
+		};
+	};
+
+	fragment@1 {
+		target = <&gpio>;
+		__overlay__ {
+			spi0_cs_pins {
+				/* free free eth1 */
+				brcm,pins     = <8 7 17>;
+				brcm,function = <BCM2835_FSEL_GPIO_OUT>;
+				brcm,pull     = <BCM2835_PUD_OFF>;
+			};
+			eth1_int_pins {
+				brcm,pins     = <18>;
+				brcm,function = <BCM2835_FSEL_GPIO_IN>;
+				brcm,pull     = <BCM2835_PUD_OFF>;
+			};
+			spi2_pins: spi2_pins {
+				/* miso mosi clock */
+				brcm,pins     = <40 41 42>;
+				brcm,function = <BCM2835_FSEL_ALT4>;
+				brcm,pull     = <BCM2835_PUD_OFF>;
+			};
+			spi2_cs_pins: spi2_cs_pins {
+				/* aout ain dout din */
+				brcm,pins     = <43 44 45 36>;
+				brcm,function = <BCM2835_FSEL_GPIO_OUT>;
+				brcm,pull     = <BCM2835_PUD_OFF>;
+			};
+			ain_mux_pins {
+				/* sw_a0 sw_a1 sw_a2 cu_sw_en */
+				brcm,pins     = <6 12 13 16>;
+				brcm,function = <BCM2835_FSEL_GPIO_OUT>;
+				brcm,pull     = <BCM2835_PUD_OFF>;
+			};
+			dout_fault_pins: dout_fault_pins {
+				brcm,pins     = <37>;
+				brcm,function = <BCM2835_FSEL_GPIO_IN>;
+				brcm,pull     = <BCM2835_PUD_OFF>;
+			};
+			din_control_pins: din_control_pins {
+				/* db0 db1 modesel fault */
+				brcm,pins     = <19 20 26 28>;
+				brcm,function = <BCM2835_FSEL_GPIO_OUT
+						 BCM2835_FSEL_GPIO_OUT
+						 BCM2835_FSEL_GPIO_OUT
+						 BCM2835_FSEL_GPIO_IN>;
+				brcm,pull     = <BCM2835_PUD_OFF>;
+			};
+			leds_pins {
+				/* power_red a1_green a1_red a2_green a2_red */
+				brcm,pins     = <35 30 34 32 33>;
+				brcm,function = <BCM2835_FSEL_GPIO_OUT>;
+				brcm,pull     = <BCM2835_PUD_OFF>;
+			};
+			rs485_pins: rs485_pins {
+				/* tx rx rts term fault */
+				brcm,pins     = <14 15 38 39 22>;
+				brcm,function = <BCM2835_FSEL_ALT0
+						 BCM2835_FSEL_ALT0
+						 BCM2835_FSEL_ALT2
+						 BCM2835_FSEL_GPIO_OUT
+						 BCM2835_FSEL_GPIO_IN>;
+				brcm,pull     = <BCM2835_PUD_DOWN
+						 BCM2835_PUD_DOWN
+						 BCM2835_PUD_DOWN
+						 BCM2835_PUD_UP
+						 BCM2835_PUD_OFF>;
+			};
+		};
+	};
+
+	fragment@2 {
+		target = <&i2c1>;
+		__overlay__ {
+			#address-cells = <1>;
+			#size-cells = <0>;
+			status = "okay";
+
+			eeprom@50 {
+				compatible = "microchip,47l16";
+				reg = <0x50>;
+				status = "okay";
+				pagesize = <32>; /* FIXME */
+			};
+
+			rtc@51 {
+				compatible = "nxp,pcf2129";
+				reg = <0x51>;
+				status = "okay";
+			};
+
+			crypto@60 {
+				compatible = "atmel,atecc508a";
+				reg = <0x60>;
+				status = "okay";
+			};
+		};
+	};
+
+	fragment@3 {
+		target = <&spi0>;
+		__overlay__ {
+			cs-gpios = <&gpio 8 GPIO_ACTIVE_LOW>,
+				   <&gpio 7 GPIO_ACTIVE_LOW>,
+				   <&gpio 17 GPIO_ACTIVE_LOW>;
+			#address-cells = <1>;
+			#size-cells = <0>;
+			status = "okay";
+
+			eth1: ethernet@2 {
+				compatible = "micrel,ks8851";
+				reg = <2>;
+				/*
+				 * RevPi Compact achieved 28.5 MHz in the lab,
+				 * round down to 25 MHz for safety.
+				 */
+				spi-max-frequency = <25000000>;	/* <= 40 MHz */
+				interrupt-parent = <&gpio>;
+				#interrupt-cells = <2>;
+				interrupts = <18 IRQ_TYPE_LEVEL_LOW>;
+				status = "okay";
+			};
+		};
+	};
+
+	fragment@4 {
+		target = <&spi2>;
+		__overlay__ {
+			pinctrl-names = "default";
+			pinctrl-0 = <&spi2_pins &spi2_cs_pins>;
+			cs-gpios = <&gpio 43 GPIO_ACTIVE_LOW>,
+				   <&gpio 44 GPIO_ACTIVE_LOW>,
+				   <&gpio 45 GPIO_ACTIVE_LOW>,
+				   <&gpio 36 GPIO_ACTIVE_LOW>;
+			#address-cells = <1>;
+			#size-cells = <0>;
+			status = "okay";
+
+			aout: dac@0 {
+				compatible = "ti,dac082s085";
+				reg = <0>;
+				spi-max-frequency = <5000000>;  /* <= 40 MHz */
+				spi-cpol;
+				vref-supply = <&aout_vref>;
+				status = "okay";
+			};
+
+			ain: adc@1 {
+				compatible = "microchip,mcp3550-50";
+				reg = <1>;
+				spi-max-frequency = <5000000>;  /* <= 5 MHz */
+				vref-supply = <&ain_vref>;
+				#io-channel-cells = <1>;
+				status = "okay";
+			};
+
+			dout: gpio@2 {
+				compatible = "fairchild,74hc595";
+				reg = <2>;
+				spi-max-frequency = <10000000>; /* <= 50 MHz */
+				gpio-controller;
+				#gpio-cells = <2>;
+				registers-number = <1>;
+				kunbus,fault-gpios = <&gpio 37 GPIO_ACTIVE_LOW>;
+				pinctrl-names = "default";
+				pinctrl-0 = <&dout_fault_pins>;
+				status = "okay";
+			};
+
+			din: gpio@3 {
+				compatible = "maxim,max31913";
+				reg = <3>;
+				spi-max-frequency = <5000000>; /* <= 25 MHz */
+				gpio-controller;
+				#gpio-cells = <2>;
+				maxim,ignore-undervoltage;
+				maxim,db0-gpios     = <&gpio 19 GPIO_ACTIVE_HIGH>;
+				maxim,db1-gpios     = <&gpio 20 GPIO_ACTIVE_HIGH>;
+				maxim,modesel-gpios = <&gpio 26 GPIO_ACTIVE_HIGH>;
+				maxim,fault-gpios   = <&gpio 28 GPIO_ACTIVE_LOW>;
+				pinctrl-names = "default";
+				pinctrl-0 = <&din_control_pins>;
+				status = "okay";
+			};
+		};
+	};
+
+	fragment@5 {
+		target = <&aux>;
+		__overlay__ {
+			status = "okay";
+		};
+	};
+
+	fragment@6 {
+		target = <&uart0>;
+		__overlay__ {
+			linux,rs485-enabled-at-boot-time;
+			pinctrl-names = "default";
+			pinctrl-0 = <&rs485_pins>;
+			rs485-term-gpios = <&gpio 39 GPIO_ACTIVE_LOW>;
+		};
+	};
+
+	fragment@7 {
+		target = <&usb>;
+		__overlay__ {
+			dr_mode = "host";
+			#address-cells = <1>;
+			#size-cells = <0>;
+
+			hub@1 {
+				compatible = "usb424,9514"; /* SMSC LAN9514 */
+				reg = <1>;
+				#address-cells = <1>;
+				#size-cells = <0>;
+
+				eth0: ethernet@1 {
+					compatible = "usb424,ec00";
+					reg = <1>;
+				};
+			};
+		};
+	};
+
+	__overrides__ {
+		eth0_mac_hi = <&eth0>,"local-mac-address:0";
+		eth0_mac_lo = <&eth0>,"local-mac-address;4";
+		eth1_mac_hi = <&eth1>,"local-mac-address:0";
+		eth1_mac_lo = <&eth1>,"local-mac-address;4";
+	};
+};

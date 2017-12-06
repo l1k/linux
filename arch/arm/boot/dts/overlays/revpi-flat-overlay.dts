@@ -1,0 +1,381 @@
+/*
+ * Device tree overlay for Revolution Pi by KUNBUS
+ *
+ * RevPi Flat
+ */
+
+/dts-v1/;
+/plugin/;
+#include <dt-bindings/gpio/gpio.h>
+#include <dt-bindings/interrupt-controller/irq.h>
+#include <dt-bindings/pinctrl/bcm2835.h>
+
+/{
+	compatible = "brcm,bcm2837";
+
+	fragment@0 {
+		target-path = "/";
+		__overlay__ {
+			compatible = "brcm,bcm2837", "brcm,bcm2836",
+				     "kunbus,revpi-flat";
+
+			aout_vref: fixedregulator_2v5x4 {
+				compatible = "regulator-fixed";
+				regulator-name = "2v5_x4_amplified";
+				regulator-min-microvolt = <10000000>;
+				regulator-max-microvolt = <10000000>;
+				regulator-always-on;
+			};
+
+			ain_vref: fixedregulator_2v5x5 {
+				compatible = "regulator-fixed";
+				regulator-name = "2v5_x5_amplified";
+				regulator-min-microvolt = <12500000>;
+				regulator-max-microvolt = <12500000>;
+				regulator-always-on;
+			};
+
+			watchdog: watchdog {
+				compatible = "linux,wdt-gpio";	  /* max6370 */
+				gpios = <&gpio 5 GPIO_ACTIVE_LOW>;
+				hw_algo = "toggle";
+				hw_margin_ms = <55000>;		  /* <= 60 s */
+				always-running;
+			};
+
+			leds {
+				compatible = "gpio-leds";
+				power_red {
+					gpios = <&gpio 16 GPIO_ACTIVE_HIGH>;
+					linux,default-trigger = "power_red";
+				};
+				a_green {
+					gpios = <&expander 0 GPIO_ACTIVE_LOW>;
+					linux,default-trigger = "a_green";
+				};
+				a_red {
+					gpios = <&expander 1 GPIO_ACTIVE_LOW>;
+					linux,default-trigger = "a_red";
+				};
+				b_green {
+					gpios = <&expander 2 GPIO_ACTIVE_LOW>;
+					linux,default-trigger = "b_green";
+				};
+				b_red {
+					gpios = <&expander 3 GPIO_ACTIVE_LOW>;
+					linux,default-trigger = "b_red";
+				};
+				c_green {
+					gpios = <&expander 4 GPIO_ACTIVE_LOW>;
+					linux,default-trigger = "c_green";
+				};
+				c_red {
+					gpios = <&expander 5 GPIO_ACTIVE_LOW>;
+					linux,default-trigger = "c_red";
+				};
+				d_green {
+					gpios = <&expander 6 GPIO_ACTIVE_LOW>;
+					linux,default-trigger = "d_green";
+				};
+				d_red {
+					gpios = <&expander 7 GPIO_ACTIVE_LOW>;
+					linux,default-trigger = "d_red";
+				};
+				e_green {
+					gpios = <&expander 8 GPIO_ACTIVE_LOW>;
+					linux,default-trigger = "e_green";
+				};
+				e_red {
+					gpios = <&expander 9 GPIO_ACTIVE_LOW>;
+					linux,default-trigger = "e_red";
+				};
+				act {
+					status = "disabled";
+				};
+			};
+		};
+	};
+
+	fragment@1 {
+		target = <&gpio>;
+		__overlay__ {
+			i2c0_gpio44: i2c0_gpio44 {
+				brcm,pins = <44 45>;
+				brcm,function = <BCM2835_FSEL_ALT1>;
+			};
+			i2c1_gpio2: i2c1_gpio2 {
+				brcm,pins = <2 3>;
+				brcm,function = <BCM2835_FSEL_ALT0>;
+			};
+			spi0_cs_pins: spi0_cs_pins {
+				/* aout ain mbus tpm */
+				brcm,pins     = <8 7 6 30>;
+				brcm,function = <BCM2835_FSEL_GPIO_OUT>;
+				brcm,pull     = <BCM2835_PUD_OFF>;
+			};
+			emmc_gpio34: emmc_gpio34 {
+				brcm,pins = <34 35 36 37 38 39>;
+				brcm,function = <BCM2835_FSEL_ALT3>;
+				brcm,pull = <BCM2835_PUD_OFF
+					     BCM2835_PUD_UP
+					     BCM2835_PUD_UP
+					     BCM2835_PUD_UP
+					     BCM2835_PUD_UP
+					     BCM2835_PUD_UP>;
+			};
+			tpm_pins {
+				/* irq reset */
+				brcm,pins     = <0 1>;
+				brcm,function = <BCM2835_FSEL_GPIO_IN
+						 BCM2835_FSEL_GPIO_OUT>;
+				brcm,pull     = <BCM2835_PUD_OFF>;
+			};
+			mbus_pins {
+				/* irq */
+				brcm,pins     = <21>;
+				brcm,function = <BCM2835_FSEL_GPIO_IN>;
+				brcm,pull     = <BCM2835_PUD_OFF>;
+			};
+			watchdog_pins {
+				/* enable ping */
+				brcm,pins     = <4 5>;
+				brcm,function = <BCM2835_FSEL_GPIO_OUT>;
+				brcm,pull     = <BCM2835_PUD_OFF>;
+			};
+			button_pins {
+				brcm,pins     = <13>;
+				brcm,function = <BCM2835_FSEL_GPIO_IN>;
+				brcm,pull     = <BCM2835_PUD_OFF>;
+			};
+			relais_pins {
+				brcm,pins     = <19>;
+				brcm,function = <BCM2835_FSEL_GPIO_OUT>;
+				brcm,pull     = <BCM2835_PUD_OFF>;
+			};
+			rs485_0_pins: rs485_0_pins {
+				/* tx rx rts */
+				brcm,pins     = <14 15 17>;
+				brcm,function = <BCM2835_FSEL_ALT0
+						 BCM2835_FSEL_ALT0
+						 BCM2835_FSEL_ALT3>;
+				brcm,pull     = <BCM2835_PUD_DOWN
+						 BCM2835_PUD_DOWN
+						 BCM2835_PUD_DOWN>;
+			};
+			rs485_1_pins: rs485_1_pins {
+				/* tx rx rts */
+				brcm,pins     = <32 33 31>;
+				brcm,function = <BCM2835_FSEL_ALT5
+						 BCM2835_FSEL_ALT5
+						 BCM2835_FSEL_ALT5>;
+				brcm,pull     = <BCM2835_PUD_DOWN
+						 BCM2835_PUD_DOWN
+						 BCM2835_PUD_DOWN>;
+			};
+		};
+	};
+
+	fragment@2 {
+		target = <&i2c0>;
+		__overlay__ {
+			#address-cells = <1>;
+			#size-cells = <0>;
+			pinctrl-names = "default";
+			pinctrl-0 = <&i2c0_gpio44>;
+			status = "okay";
+
+			/* TODO: ksz8795 */
+		};
+	};
+
+	fragment@3 {
+		target = <&i2c1>;
+		__overlay__ {
+			#address-cells = <1>;
+			#size-cells = <0>;
+			pinctrl-names = "default";
+			pinctrl-0 = <&i2c1_gpio2>;
+			status = "okay";
+
+			expander: gpio@20 {
+				compatible = "ti,tca6416";
+				reg = <0x20>;
+				gpio-controller;
+				#gpio-cells = <2>;
+				status = "okay";
+			};
+
+			rtc@51 {
+				compatible = "nxp,pcf2129";
+				reg = <0x51>;
+				status = "okay";
+			};
+		};
+	};
+
+	fragment@4 {
+		target = <&spi0>;
+		__overlay__ {
+			#address-cells = <1>;
+			#size-cells = <0>;
+			cs-gpios = <&gpio  8 GPIO_ACTIVE_LOW>,
+				   <&gpio  7 GPIO_ACTIVE_LOW>,
+				   <&gpio  6 GPIO_ACTIVE_LOW>,
+				   <&gpio 30 GPIO_ACTIVE_LOW>;
+			pinctrl-names = "default";
+			pinctrl-0 = <&spi0_pins &spi0_cs_pins>;
+			status = "okay";
+
+			aout: dac@0 {
+				compatible = "ti,dac7512";
+				reg = <0>;
+				spi-max-frequency = <5000000>;  /* <= 30 MHz */
+				spi-cpol;
+				vcc-supply = <&aout_vref>;
+				status = "okay";
+			};
+
+			ain: adc@1 {
+				compatible = "microchip,mcp3550-50";
+				reg = <1>;
+				spi-max-frequency = <5000000>;   /* <= 5 MHz */
+				vref-supply = <&ain_vref>;
+				status = "okay";
+			};
+
+			mbus: rf@2 {
+				compatible = "spidev", "ti,cc1101";
+				reg = <2>;
+				spi-max-frequency = <5000000>; /* <= 6.5 MHz */
+				interrupt-parent = <&gpio>;
+				#interrupt-cells = <2>;
+				interrupts = <21 IRQ_TYPE_LEVEL_HIGH>;
+				status = "okay";
+			};
+
+			tpm: tpm@3 {
+				compatible = "infineon,slb9670";
+				reg = <3>;
+				spi-max-frequency = <1000000>;	/* <= 43 MHz */
+				interrupt-parent = <&gpio>;
+				#interrupt-cells = <2>;
+				interrupts = <0 IRQ_TYPE_LEVEL_LOW>;
+				status = "okay";
+			};
+		};
+	};
+
+	fragment@5 {
+		target = <&spidev0>;
+		__overlay__ {
+			status = "disabled";
+		};
+	};
+
+	fragment@6 {
+		target = <&spidev1>;
+		__overlay__ {
+			status = "disabled";
+		};
+	};
+
+	fragment@7 {
+		target = <&usb>;
+		__overlay__ {
+			#address-cells = <1>;
+			#size-cells = <0>;
+
+			hub@1 {
+				/* SMSC LAN9514 */
+				compatible = "usb424,9514";
+				reg = <1>;
+				#address-cells = <1>;
+				#size-cells = <0>;
+
+				eth0: ethernet@1 {
+					compatible = "usb424,ec00";
+					reg = <1>;
+				};
+
+				eth1: ethernet@4 {
+					/* SMSC LAN9500, attached to KSZ8795 */
+					compatible = "usb424,9500";
+					reg = <4>;
+				};
+
+				uart@5 {
+					/* FTDI FT232R */
+					compatible = "usb403,6001";
+					reg = <5>;
+
+					bluetooth {
+						compatible = "brcm,bcm43438-bt";
+						max-speed = <2000000>;
+					};
+				};
+			};
+		};
+	};
+
+	fragment@8 {
+		target = <&mmc>;
+		__overlay__ {
+			#address-cells = <1>;
+			#size-cells = <0>;
+			pinctrl-names = "default";
+			pinctrl-0 = <&emmc_gpio34>;
+			status = "okay";
+			bus-width = <4>;
+			non-removable;
+			brcm,overclock-50 = <20>;
+
+			wlan0: wifi@1 {
+				reg = <1>;
+				compatible = "brcm,bcm4329-fmac";
+				status = "okay";
+			};
+		};
+	};
+
+	fragment@9 {
+		target = <&uart0>;
+		__overlay__ {
+			linux,rs485-enabled-at-boot-time;
+			pinctrl-names = "default";
+			pinctrl-0 = <&rs485_0_pins>;
+			rs485-term-gpios = <&expander 14 GPIO_ACTIVE_LOW>;
+		};
+	};
+
+	fragment@10 {
+		target = <&uart1>;
+		__overlay__ {
+			linux,rs485-enabled-at-boot-time;
+			pinctrl-names = "default";
+			pinctrl-0 = <&rs485_1_pins>;
+			rs485-term-gpios = <&expander 15 GPIO_ACTIVE_LOW>;
+			status = "okay";
+		};
+	};
+
+	fragment@11 {
+		target = <&fb>;
+		__overlay__ {
+			status = "disabled";
+		};
+	};
+
+	fragment@12 {
+		target-path = "/chosen";
+		chosen_overlay: __overlay__ {
+		};
+	};
+
+	__overrides__ {
+		eth0_mac_hi = <&eth0>,"local-mac-address:0";
+		eth0_mac_lo = <&eth0>,"local-mac-address;4";
+		eth1_mac_hi = <&eth1>,"local-mac-address:0";
+		eth1_mac_lo = <&eth1>,"local-mac-address;4";
+		bootargs = <&chosen_overlay>,"bootargs";
+	};
+};
