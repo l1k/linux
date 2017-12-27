@@ -940,7 +940,7 @@ static int bcm_platform_probe(struct bcm_device *dev)
 		dev->irq = gpiod_to_irq(gpio);
 	}
 
-	dev_info(&pdev->dev, "BCM irq: %d\n", dev->irq);
+	dev_dbg(&pdev->dev, "BCM irq: %d\n", dev->irq);
 
 	/* Make sure at-least one of the GPIO is defined and that
 	 * a name is specified for this instance
