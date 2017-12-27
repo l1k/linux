@@ -366,7 +366,7 @@ static int bcm_close(struct hci_uart *hu)
 		pm_runtime_disable(&bdev->pdev->dev);
 		pm_runtime_set_suspended(&bdev->pdev->dev);
 
-		if (device_can_wakeup(&bdev->pdev->dev)) {
+		if (bdev->irq > 0) {
 			devm_free_irq(&bdev->pdev->dev, bdev->irq, bdev);
 			device_init_wakeup(&bdev->pdev->dev, false);
 		}
@@ -612,7 +612,7 @@ static int bcm_suspend(struct device *dev)
 	if (pm_runtime_active(dev))
 		bcm_suspend_device(dev);
 
-	if (device_may_wakeup(&bdev->pdev->dev)) {
+	if (device_may_wakeup(&bdev->pdev->dev) && bdev->irq > 0) {
 		error = enable_irq_wake(bdev->irq);
 		if (!error)
 			bt_dev_dbg(bdev, "BCM irq: enabled");
@@ -640,7 +640,7 @@ static int bcm_resume(struct device *dev)
 	if (!bdev->hu)
 		goto unlock;
 
-	if (device_may_wakeup(&bdev->pdev->dev)) {
+	if (device_may_wakeup(&bdev->pdev->dev) && bdev->irq > 0) {
 		disable_irq_wake(bdev->irq);
 		bt_dev_dbg(bdev, "BCM irq: disabled");
 	}
