@@ -168,13 +168,25 @@ static bool bcm_device_exists(struct bcm_device *device)
 	return false;
 }
 
+static int bcm_gpio_set_device_wakeup(struct bcm_device *dev, bool awake)
+{
+	int err = 0;
+
+	gpiod_set_value(dev->device_wakeup, awake);
+	bt_dev_dbg(dev, "%s, delaying 15 ms", awake ? "resume" : "suspend");
+	mdelay(15);
+
+	return err;
+}
+
 static int bcm_gpio_set_power(struct bcm_device *dev, bool powered)
 {
 	if (powered && !IS_ERR(dev->clk) && !dev->clk_enabled)
 		clk_prepare_enable(dev->clk);
 
 	gpiod_set_value(dev->shutdown, powered);
-	gpiod_set_value(dev->device_wakeup, powered);
+
+	bcm_gpio_set_device_wakeup(dev, powered);
 
 	if (!powered && !IS_ERR(dev->clk) && dev->clk_enabled)
 		clk_disable_unprepare(dev->clk);
@@ -571,9 +583,7 @@ static int bcm_suspend_device(struct device *dev)
 	}
 
 	/* Suspend the device */
-	gpiod_set_value(bdev->device_wakeup, false);
-	bt_dev_dbg(bdev, "suspend, delaying 15 ms");
-	mdelay(15);
+	bcm_gpio_set_device_wakeup(bdev, false);
 
 	return 0;
 }
@@ -584,9 +594,7 @@ static int bcm_resume_device(struct device *dev)
 
 	bt_dev_dbg(bdev, "");
 
-	gpiod_set_value(bdev->device_wakeup, true);
-	bt_dev_dbg(bdev, "resume, delaying 15 ms");
-	mdelay(15);
+	bcm_gpio_set_device_wakeup(bdev, true);
 
 	/* When this executes, the device has woken up already */
 	if (bdev->is_suspended && bdev->hu) {
