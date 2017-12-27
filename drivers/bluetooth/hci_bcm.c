@@ -62,6 +62,8 @@
  *	deassert = Bluetooth device may sleep when sleep criteria are met
  * @shutdown: BT_REG_ON pin,
  *	power up or power down Bluetooth device internal regulators
+ * @set_device_wakeup: callback to toggle BT_WAKE pin
+ * @set_shutdown: callback to toggle BT_REG_ON pin
  * @clk: clock used by Bluetooth device
  * @clk_enabled: whether @clk is prepared and enabled
  * @init_speed: default baudrate of Bluetooth device;
@@ -83,6 +85,8 @@ struct bcm_device {
 	const char		*name;
 	struct gpio_desc	*device_wakeup;
 	struct gpio_desc	*shutdown;
+	int			(*set_device_wakeup)(struct bcm_device *, bool);
+	int			(*set_shutdown)(struct bcm_device *, bool);
 
 	struct clk		*clk;
 	bool			clk_enabled;
@@ -192,8 +196,8 @@ static int bcm_gpio_set_power(struct bcm_device *dev, bool powered)
 	if (powered && !IS_ERR(dev->clk) && !dev->clk_enabled)
 		clk_prepare_enable(dev->clk);
 
-	gpiod_set_value(dev->shutdown, powered);
-	gpiod_set_value(dev->device_wakeup, powered);
+	dev->set_shutdown(dev, powered);
+	dev->set_device_wakeup(dev, powered);
 
 	if (!powered && !IS_ERR(dev->clk) && dev->clk_enabled)
 		clk_disable_unprepare(dev->clk);
@@ -587,7 +591,7 @@ static int bcm_suspend_device(struct device *dev)
 	}
 
 	/* Suspend the device */
-	gpiod_set_value(bdev->device_wakeup, false);
+	bdev->set_device_wakeup(bdev, false);
 	bt_dev_dbg(bdev, "suspend, delaying 15 ms");
 	mdelay(15);
 
@@ -600,7 +604,7 @@ static int bcm_resume_device(struct device *dev)
 
 	bt_dev_dbg(bdev, "");
 
-	gpiod_set_value(bdev->device_wakeup, true);
+	bdev->set_device_wakeup(bdev, true);
 	bt_dev_dbg(bdev, "resume, delaying 15 ms");
 	mdelay(15);
 
@@ -774,6 +778,18 @@ static int bcm_resource(struct acpi_resource *ares, void *data)
 }
 #endif /* CONFIG_ACPI */
 
+static int bcm_gpio_set_device_wakeup(struct bcm_device *dev, bool awake)
+{
+	gpiod_set_value(dev->device_wakeup, awake);
+	return 0;
+}
+
+static int bcm_gpio_set_shutdown(struct bcm_device *dev, bool powered)
+{
+	gpiod_set_value(dev->shutdown, powered);
+	return 0;
+}
+
 static int bcm_platform_probe(struct bcm_device *dev)
 {
 	struct platform_device *pdev = dev->pdev;
@@ -790,6 +806,9 @@ static int bcm_platform_probe(struct bcm_device *dev)
 	dev->shutdown = devm_gpiod_get(&pdev->dev, "shutdown", GPIOD_OUT_LOW);
 	if (IS_ERR(dev->shutdown))
 		return PTR_ERR(dev->shutdown);
+
+	dev->set_device_wakeup = bcm_gpio_set_device_wakeup;
+	dev->set_shutdown = bcm_gpio_set_shutdown;
 
 	/* IRQ can be declared in ACPI table as Interrupt or GpioInt */
 	dev->irq = platform_get_irq(pdev, 0);
