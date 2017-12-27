@@ -221,12 +221,6 @@ static int bcm_request_irq(struct bcm_data *bcm)
 
 	device_init_wakeup(bdev->dev, true);
 
-	pm_runtime_set_autosuspend_delay(bdev->dev,
-					 BCM_AUTOSUSPEND_DELAY);
-	pm_runtime_use_autosuspend(bdev->dev);
-	pm_runtime_set_active(bdev->dev);
-	pm_runtime_enable(bdev->dev);
-
 unlock:
 	mutex_unlock(&bcm_device_lock);
 
@@ -467,6 +461,11 @@ finalize:
 
 	if (!bcm_request_irq(bcm))
 		err = bcm_setup_sleep(hu);
+
+	pm_runtime_set_autosuspend_delay(bcm->dev->dev, BCM_AUTOSUSPEND_DELAY);
+	pm_runtime_use_autosuspend(bcm->dev->dev);
+	pm_runtime_set_active(bcm->dev->dev);
+	pm_runtime_enable(bcm->dev->dev);
 
 	return err;
 }
