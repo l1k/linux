@@ -52,7 +52,29 @@
 
 #define BCM_AUTOSUSPEND_DELAY	5000 /* default autosleep delay */
 
-/* platform device driver resources */
+/**
+ * struct bcm_device - platform device driver resources
+ * @list: bcm_device_list node
+ * @pdev: physical UART slave
+ * @name: device name logged by bt_dev_*() functions
+ * @device_wakeup: BT_WAKE pin,
+ *	assert = Bluetooth device must wake up or remain awake,
+ *	deassert = Bluetooth device may sleep when sleep criteria are met
+ * @shutdown: BT_REG_ON pin,
+ *	power up or power down Bluetooth device internal regulators
+ * @clk: clock used by Bluetooth device
+ * @clk_enabled: whether @clk is prepared and enabled
+ * @init_speed: default baudrate of Bluetooth device;
+ *	the host UART is initially set to this baudrate so that
+ *	it can configure the Bluetooth device for @oper_speed
+ * @oper_speed: preferred baudrate of Bluetooth device;
+ *	set to 0 if @init_speed is already the preferred baudrate
+ * @irq: interrupt triggered by HOST_WAKE_BT pin
+ * @irq_polarity: 1 if @irq is active low, 0 if it's active high
+ * @hu: pointer to HCI UART controller struct,
+ *	used to disable flow control during runtime suspend and system sleep
+ * @is_suspended: whether flow control is currently disabled
+ */
 struct bcm_device {
 	struct list_head	list;
 
@@ -72,7 +94,7 @@ struct bcm_device {
 
 #ifdef CONFIG_PM
 	struct hci_uart		*hu;
-	bool			is_suspended; /* suspend/resume flag */
+	bool			is_suspended;
 #endif
 };
 
