@@ -212,8 +212,10 @@ static int bcm_request_irq(struct bcm_data *bcm)
 
 	err = devm_request_irq(&bdev->pdev->dev, bdev->irq, bcm_host_wake,
 			       IRQF_TRIGGER_RISING, "host_wake", bdev);
-	if (err)
+	if (err) {
+		bdev->irq = err;
 		goto unlock;
+	}
 
 	device_init_wakeup(&bdev->pdev->dev, true);
 
