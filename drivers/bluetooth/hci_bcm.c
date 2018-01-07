@@ -378,8 +378,10 @@ static int bcm_close(struct hci_uart *hu)
 		}
 
 		bcm_gpio_set_power(bdev, false);
-		pm_runtime_disable(bdev->dev);
-		pm_runtime_set_suspended(bdev->dev);
+		if (bdev->irq > 0) {
+			pm_runtime_disable(bdev->dev);
+			pm_runtime_set_suspended(bdev->dev);
+		}
 	}
 	mutex_unlock(&bcm_device_lock);
 
