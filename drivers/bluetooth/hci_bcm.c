@@ -364,10 +364,10 @@ static int bcm_close(struct hci_uart *hu)
 		if (IS_ENABLED(CONFIG_PM) && bdev->irq > 0) {
 			devm_free_irq(&bdev->pdev->dev, bdev->irq, bdev);
 			device_init_wakeup(&bdev->pdev->dev, false);
+			pm_runtime_disable(&bdev->pdev->dev);
 		}
 
 		bcm_gpio_set_power(bdev, false);
-		pm_runtime_disable(&bdev->pdev->dev);
 		pm_runtime_set_suspended(&bdev->pdev->dev);
 
 #ifdef CONFIG_PM
