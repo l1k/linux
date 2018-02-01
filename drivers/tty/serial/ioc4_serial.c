@@ -1738,8 +1738,9 @@ ioc4_change_speed(struct uart_port *the_port,
 
 	if (!the_port->fifosize)
 		the_port->fifosize = IOC4_FIFO_CHARS;
-	the_port->timeout = ((the_port->fifosize * HZ * bits) / (baud / 10));
-	the_port->timeout += HZ / 50;	/* Add .02 seconds of slop */
+	the_port->timeout = ((the_port->fifosize * USEC_PER_SEC * bits) /
+								  (baud / 10));
+	the_port->timeout += 20 * MSEC_PER_SEC;   /* Add .02 seconds of slop */
 
 	the_port->ignore_status_mask = N_ALL_INPUT;
 
