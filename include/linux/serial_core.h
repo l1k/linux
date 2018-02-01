@@ -246,7 +246,7 @@ struct uart_port {
 
 	int			hw_stopped;		/* sw-assisted CTS flow state */
 	unsigned int		mctrl;			/* current modem ctrl settings */
-	unsigned int		timeout;		/* character-based timeout */
+	unsigned int		timeout;		/* timespan to transmit full FIFO (usec) */
 	unsigned int		type;			/* port type */
 	const struct uart_ops	*ops;
 	unsigned int		custom_divisor;
@@ -343,7 +343,7 @@ unsigned int uart_get_divisor(struct uart_port *port, unsigned int baud);
 /* Base timer interval for polling */
 static inline int uart_poll_timeout(struct uart_port *port)
 {
-	int timeout = port->timeout;
+	int timeout = usecs_to_jiffies(port->timeout);
 
 	return timeout > 6 ? (timeout / 2 - 2) : 1;
 }
