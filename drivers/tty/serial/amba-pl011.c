@@ -307,6 +307,7 @@ struct pl011_dmatx_data {
  * @tx_fifo_empty: minimum number of currently empty characters in TX FIFO
  *	(set to the programmed fill level on reception of TX interrupt,
  *	decremented for every character read from the FIFO)
+ * @tx_poll_interval: poll interval when waiting for TX FIFO to empty (usec)
  * @pio_rx: RX PIO thread
  * @pio_tx: TX PIO thread
  * @using_tx_dma: whether TX DMA is enabled
@@ -330,6 +331,7 @@ struct uart_amba_port {
 	unsigned int		fifosize;
 	unsigned int		rx_fifo_filled;
 	unsigned int		tx_fifo_empty;
+	unsigned int		tx_poll_interval;
 	struct task_struct	*pio_rx;
 	struct task_struct	*pio_tx;
 #ifdef CONFIG_DMA_ENGINE
@@ -1528,15 +1530,17 @@ static int pl011_rs485_tx_stop(struct uart_amba_port *uap)
 {
 	struct uart_port *port = &uap->port;
 	struct circ_buf *xmit = &port->state->xmit;
-	unsigned long char_time =
-		(port->timeout - 20 * MSEC_PER_SEC) / uap->fifosize / 5;
 	u32 cr;
 
 	if (!(port->rs485.flags & SER_RS485_ENABLED))
 		return 0;
 
 	while (!pl011_tx_empty(port)) {
-		usleep_range(char_time, char_time + 50);
+		if (uap->tx_poll_interval <= 50)
+			udelay(uap->tx_poll_interval);
+		else
+			usleep_range(uap->tx_poll_interval - 25,
+				     uap->tx_poll_interval);
 
 		if ((!uart_circ_empty(xmit) && !uart_tx_stopped(port))
 		    || port->x_char)
@@ -2220,6 +2224,8 @@ pl011_set_termios(struct uart_port *port, struct ktermios *termios,
 	 * Update the per-port timeout.
 	 */
 	uart_update_timeout(port, termios->c_cflag, baud);
+	uap->tx_poll_interval =
+		(port->timeout - 20 * MSEC_PER_SEC) / uap->fifosize / 5;
 
 	pl011_setup_status_masks(port, termios);
 
@@ -2294,6 +2300,8 @@ sbsa_uart_set_termios(struct uart_port *port, struct ktermios *termios,
 
 	spin_lock_irqsave(&port->lock, flags);
 	uart_update_timeout(port, CS8, uap->fixed_baud);
+	uap->tx_poll_interval =
+		(port->timeout - 20 * MSEC_PER_SEC) / uap->fifosize / 5;
 	pl011_setup_status_masks(port, termios);
 	spin_unlock_irqrestore(&port->lock, flags);
 }
