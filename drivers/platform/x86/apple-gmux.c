@@ -480,6 +480,9 @@ static int gmux_set_discrete_state(struct apple_gmux_data *gmux_data,
 						       msecs_to_jiffies(200)))
 		pr_warn("Timeout waiting for gmux switch to complete\n");
 
+	if (state == VGA_SWITCHEROO_ON)
+		msleep(PCI_PM_D3COLD_WAIT);
+
 	return 0;
 }
 

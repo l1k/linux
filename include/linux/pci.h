@@ -170,6 +170,8 @@ static inline const char *pci_power_name(pci_power_t state)
 	return pci_power_names[1 + (__force int) state];
 }
 
+#define PCI_PM_D3COLD_WAIT      100	/* msec */
+
 /**
  * typedef pci_channel_state_t
  *
