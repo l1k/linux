@@ -71,6 +71,8 @@
  * @btlp: Apple ACPI method to toggle BT_WAKE pin ("Bluetooth Low Power")
  * @btpu: Apple ACPI method to drive BT_REG_ON pin high ("Bluetooth Power Up")
  * @btpd: Apple ACPI method to drive BT_REG_ON pin low ("Bluetooth Power Down")
+ * @device_wakeup_usable: whether sleep parameters have been configured;
+ *	otherwise toggling the @device_wakeup pin is not safe
  * @clk: clock used by Bluetooth device
  * @clk_enabled: whether @clk is prepared and enabled
  * @init_speed: default baudrate of Bluetooth device;
@@ -99,6 +101,7 @@ struct bcm_device {
 #ifdef CONFIG_ACPI
 	acpi_handle		btlp, btpu, btpd;
 #endif
+	bool			device_wakeup_usable;
 
 	struct clk		*clk;
 	bool			clk_enabled;
@@ -321,6 +324,7 @@ static int bcm_setup_sleep(struct hci_uart *hu)
 	}
 	kfree_skb(skb);
 
+	bcm->dev->device_wakeup_usable = true;
 	bt_dev_dbg(hu->hdev, "Set Sleep Parameters VSC succeeded");
 
 	return 0;
@@ -859,7 +863,10 @@ static int bcm_resource(struct acpi_resource *ares, void *data)
 
 static int bcm_apple_set_device_wakeup(struct bcm_device *dev, bool awake)
 {
-	if (ACPI_FAILURE(acpi_execute_simple_method(dev->btlp, NULL, !awake)))
+	pr_info("device_wakeup pin %sset to %d\n", dev->device_wakeup_usable ? "" : "not ", awake);
+
+	if (dev->device_wakeup_usable &&
+	    ACPI_FAILURE(acpi_execute_simple_method(dev->btlp, NULL, !awake)))
 		return -EIO;
 
 	return 0;
@@ -903,7 +910,8 @@ static inline int bcm_apple_get_resources(struct bcm_device *dev)
 
 static int bcm_gpio_set_device_wakeup(struct bcm_device *dev, bool awake)
 {
-	gpiod_set_value(dev->device_wakeup, awake);
+	if (dev->device_wakeup_usable)
+		gpiod_set_value(dev->device_wakeup, awake);
 	return 0;
 }
 
