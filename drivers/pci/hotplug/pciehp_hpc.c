@@ -773,6 +773,7 @@ int pciehp_reset_slot(struct slot *slot, int probe)
 	ctrl_mask |= PCI_EXP_SLTCTL_DLLSCE;
 	stat_mask |= PCI_EXP_SLTSTA_DLLSC;
 
+	pm_runtime_get_noresume(&pdev->dev);
 	pcie_write_cmd(ctrl, 0, ctrl_mask);
 	ctrl_dbg(ctrl, "%s: SLOTCTRL %x write cmd %x\n", __func__,
 		 pci_pcie_cap(ctrl->pcie->port) + PCI_EXP_SLTCTL, 0);
@@ -784,6 +785,7 @@ int pciehp_reset_slot(struct slot *slot, int probe)
 	pci_reset_bridge_secondary_bus(ctrl->pcie->port);
 
 	pcie_capability_write_word(pdev, PCI_EXP_SLTSTA, stat_mask);
+	pm_runtime_put_noidle(&pdev->dev);
 	pcie_write_cmd_nowait(ctrl, ctrl_mask, ctrl_mask);
 	ctrl_dbg(ctrl, "%s: SLOTCTRL %x write cmd %x\n", __func__,
 		 pci_pcie_cap(ctrl->pcie->port) + PCI_EXP_SLTCTL, ctrl_mask);
