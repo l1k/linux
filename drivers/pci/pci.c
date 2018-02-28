@@ -817,6 +817,7 @@ void pci_wakeup_bus(struct pci_bus *bus)
 	if (bus)
 		pci_walk_bus(bus, pci_wakeup, NULL);
 }
+EXPORT_SYMBOL(pci_wakeup_bus);
 
 /**
  * __pci_start_power_transition - Start power transition of a PCI device
@@ -871,6 +872,7 @@ void pci_bus_set_current_state(struct pci_bus *bus, pci_power_t state)
 	if (bus)
 		pci_walk_bus(bus, __pci_dev_set_current_state, &state);
 }
+EXPORT_SYMBOL(pci_bus_set_current_state);
 
 /**
  * __pci_complete_power_transition - Complete power transition of a PCI device
