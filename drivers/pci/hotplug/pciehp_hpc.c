@@ -20,6 +20,7 @@
 #include <linux/jiffies.h>
 #include <linux/kthread.h>
 #include <linux/pci.h>
+#include <linux/pm_runtime.h>
 #include <linux/interrupt.h>
 #include <linux/time.h>
 #include <linux/slab.h>
@@ -527,6 +528,7 @@ static irqreturn_t pciehp_isr(int irq, void *dev_id)
 {
 	struct controller *ctrl = (struct controller *)dev_id;
 	struct pci_dev *pdev = ctrl_dev(ctrl);
+	struct device *parent = pdev->dev.parent;
 	u16 status, events;
 
 	/*
@@ -535,9 +537,26 @@ static irqreturn_t pciehp_isr(int irq, void *dev_id)
 	if (pdev->current_state == PCI_D3cold)
 		return IRQ_NONE;
 
+	/*
+	 * Keep the port accessible by holding a runtime PM ref on its parent.
+	 * Defer resume of the parent to the IRQ thread if it's suspended.
+	 * Mask the interrupt until then.
+	 */
+	if (parent) {
+		pm_runtime_get_noresume(parent);
+		if (!pm_runtime_active(parent)) {
+			pm_runtime_put(parent);
+			disable_irq_nosync(irq);
+			atomic_or(RERUN_ISR, &ctrl->pending_events);
+			return IRQ_WAKE_THREAD;
+		}
+	}
+
 	pcie_capability_read_word(pdev, PCI_EXP_SLTSTA, &status);
 	if (status == (u16) ~0) {
 		ctrl_info(ctrl, "%s: no response from device\n", __func__);
+		if (parent)
+			pm_runtime_put(parent);
 		return IRQ_NONE;
 	}
 
@@ -556,11 +575,16 @@ static irqreturn_t pciehp_isr(int irq, void *dev_id)
 	if (ctrl->power_fault_detected)
 		events &= ~PCI_EXP_SLTSTA_PFD;
 
-	if (!events)
+	if (!events) {
+		if (parent)
+			pm_runtime_put(parent);
 		return IRQ_NONE;
+	}
 
 	pcie_capability_write_word(pdev, PCI_EXP_SLTSTA, events);
 	ctrl_dbg(ctrl, "pending interrupts %#06x from Slot Status\n", events);
+	if (parent)
+		pm_runtime_put(parent);
 
 	/*
 	 * Command Completed notifications are not deferred to the
@@ -590,13 +614,29 @@ static irqreturn_t pciehp_isr(int irq, void *dev_id)
 static irqreturn_t pciehp_ist(int irq, void *dev_id)
 {
 	struct controller *ctrl = (struct controller *)dev_id;
+	struct pci_dev *pdev = ctrl_dev(ctrl);
 	struct slot *slot = ctrl->slot;
+	irqreturn_t ret;
 	u32 events;
+
+	pci_config_pm_runtime_get(pdev);
+
+	/* rerun pciehp_isr() if the port was inaccessible on interrupt */
+	if (atomic_fetch_and(~RERUN_ISR, &ctrl->pending_events) & RERUN_ISR) {
+		ret = pciehp_isr(irq, dev_id);
+		enable_irq(irq);
+		if (ret != IRQ_WAKE_THREAD) {
+			pci_config_pm_runtime_put(pdev);
+			return ret;
+		}
+	}
 
 	synchronize_hardirq(irq);
 	events = atomic_xchg(&ctrl->pending_events, 0);
-	if (!events)
+	if (!events) {
+		pci_config_pm_runtime_put(pdev);
 		return IRQ_NONE;
+	}
 
 	/* Check Attention Button Pressed */
 	if (events & PCI_EXP_SLTSTA_ABP) {
@@ -622,6 +662,7 @@ static irqreturn_t pciehp_ist(int irq, void *dev_id)
 		pciehp_green_led_off(slot);
 	}
 
+	pci_config_pm_runtime_put(pdev);
 	return IRQ_HANDLED;
 }
 
