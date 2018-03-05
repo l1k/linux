@@ -125,6 +125,9 @@ struct tb_switch {
  * @dual_link_port: If the switch is connected using two ports, points
  *		    to the other port.
  * @link_nr: Is this primary or secondary port on the dual_link.
+ * @pci: Data specific to PCIe adapters
+ * @pci.devfn: PCI slot/function according to DROM
+ * @pci.unknown: Unknown data in DROM (to be reverse-engineered)
  */
 struct tb_port {
 	struct tb_regs_port_header config;
@@ -136,6 +139,12 @@ struct tb_port {
 	bool disabled;
 	struct tb_port *dual_link_port;
 	u8 link_nr:1;
+	union {
+		struct {
+			u8 devfn;
+			u8 unknown[9];
+		} pci;
+	};
 };
 
 /**

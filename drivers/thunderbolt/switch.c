@@ -577,6 +577,7 @@ int tb_port_clear_counter(struct tb_port *port, int counter)
  */
 static int tb_init_port(struct tb_port *port)
 {
+	struct tb *tb = port->sw->tb;
 	int res;
 	int cap;
 
@@ -594,9 +595,20 @@ static int tb_init_port(struct tb_port *port)
 			tb_port_WARN(port, "non switch port without a PHY\n");
 	}
 
-	tb_dump_port(port->sw->tb, &port->config);
+	tb_dump_port(tb, &port->config);
 
 	/* TODO: Read dual link port, DP port and more from EEPROM. */
+	switch (port->config.type) {
+	case TB_TYPE_PCIE_UP:
+	case TB_TYPE_PCIE_DOWN:
+		tb_info(tb, "  PCI slot: %02x.0\n", PCI_SLOT(port->pci.devfn));
+		tb_info(tb, "  PCI unknown data: %*ph\n",
+			(int)sizeof(port->pci.unknown), port->pci.unknown);
+		break;
+	default:
+		break;
+	}
+
 	return 0;
 
 }

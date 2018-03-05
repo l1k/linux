@@ -236,6 +236,15 @@ struct tb_drom_entry_port {
 	u8 unknown4:2;
 } __packed;
 
+struct tb_drom_entry_pci {
+	/* BYTES 0-1 */
+	struct tb_drom_entry_header header;
+	/* BYTE 2 */
+	u8 unknown:5;
+	u8 slot:3;
+	/* BYTES 3-10 are only present on PCIe upstream ports */
+} __packed;
+
 
 /**
  * tb_eeprom_get_drom_offset - get drom offset within eeprom
@@ -365,6 +374,18 @@ static int tb_drom_parse_entry_port(struct tb_switch *sw,
 		if (entry->has_dual_link_port)
 			port->dual_link_port =
 				&port->sw->ports[entry->dual_link_port_nr];
+	} else if (type == TB_TYPE_PCIE_UP || type == TB_TYPE_PCIE_DOWN) {
+		struct tb_drom_entry_pci *entry = (void *) header;
+		if (header->len < sizeof(*entry)) {
+			tb_sw_warn(sw,
+				"port entry has size %#x (expected %#zx+)\n",
+				header->len, sizeof(struct tb_drom_entry_pci));
+			return -EIO;
+		}
+		port->pci.devfn = PCI_DEVFN(entry->slot, 0);
+		memcpy(port->pci.unknown, header + 1,
+		       min(header->len - sizeof(struct tb_drom_entry_header),
+			   sizeof(port->pci.unknown)));
 	}
 	return 0;
 }
