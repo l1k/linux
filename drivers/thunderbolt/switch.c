@@ -502,6 +502,15 @@ static void tb_dump_port(struct tb_port *port)
 	       config->max_in_hop_id, config->max_out_hop_id);
 	tb_dbg(tb, "  Max counters: %d\n", config->max_counters);
 	tb_dbg(tb, "  NFC Credits: %#x\n", config->nfc_credits);
+
+	switch (config->type) {
+	case TB_TYPE_PCIE_UP:
+	case TB_TYPE_PCIE_DOWN:
+		tb_dbg(tb, "  PCI slot: %02x.0\n", PCI_SLOT(port->pci.devfn));
+		break;
+	default:
+		break;
+	}
 }
 
 /**

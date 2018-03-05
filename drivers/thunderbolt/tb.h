@@ -198,6 +198,8 @@ struct tb_switch {
  * @in_hopids: Currently allocated input HopIDs
  * @out_hopids: Currently allocated output HopIDs
  * @list: Used to link ports to DP resources list
+ * @pci: Data specific to PCIe adapters
+ * @pci.devfn: PCI slot/function according to DROM
  *
  * In USB4 terminology this structure represents an adapter (protocol or
  * lane adapter).
@@ -219,6 +221,11 @@ struct tb_port {
 	struct ida in_hopids;
 	struct ida out_hopids;
 	struct list_head list;
+	union {
+		struct {
+			u8 devfn;
+		} pci;
+	};
 };
 
 /**
