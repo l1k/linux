@@ -280,6 +280,19 @@ struct tb_drom_entry_port {
 	u8 unknown4:2;
 } __packed;
 
+struct tb_drom_entry_pcie_down {
+	/* BYTES 0-1 */
+	struct tb_drom_entry_header header;
+	/* BYTE 2 */
+	u8 devfn;
+	/* BYTES 3-10 only present on PCIe Upstream Adapter Entry, reserved */
+};
+
+/* Convert BYTE 2 of PCIe Up/Downstream Adapter Entry to PCI_DEVFN() format */
+#define TB_DEVFN(devfn)			(((devfn & GENMASK(4, 3)) << 3) | \
+					 ((devfn & GENMASK(7, 5)) >> 2) | \
+					 ((devfn & GENMASK(2, 0))))
+
 /* USB4 product descriptor */
 struct tb_drom_entry_desc {
 	struct tb_drom_entry_header header;
@@ -395,6 +408,15 @@ static int tb_drom_parse_entry_port(struct tb_switch *sw,
 		if (entry->has_dual_link_port)
 			port->dual_link_port =
 				&port->sw->ports[entry->dual_link_port_nr];
+	} else if (type == TB_TYPE_PCIE_UP || type == TB_TYPE_PCIE_DOWN) {
+		struct tb_drom_entry_pcie_down *entry = (void *) header;
+		if (header->len < sizeof(*entry)) {
+			tb_sw_warn(sw,
+				"port entry has size %#x (expected %#zx)\n",
+				header->len, sizeof(*entry));
+			return -EIO;
+		}
+		port->devfn = TB_DEVFN(entry->devfn);
 	}
 	return 0;
 }

@@ -268,6 +268,8 @@ struct tb_bandwidth_group {
  * @max_bw: Maximum possible bandwidth through this adapter if set to
  *	    non-zero.
  * @redrive: For DP IN, if true the adapter is in redrive mode.
+ * @devfn: For PCIe, the Device/Function number to associate this Adapter
+ *	   with a Function of the PCIe Switch/Endpoint (%-1 if unknown).
  *
  * In USB4 terminology this structure represents an adapter (protocol or
  * lane adapter).
@@ -297,6 +299,7 @@ struct tb_port {
 	struct list_head group_list;
 	unsigned int max_bw;
 	bool redrive;
+	u16 devfn;
 };
 
 /**

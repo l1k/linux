@@ -456,6 +456,16 @@ static void tb_dump_port(struct tb *tb, const struct tb_port *port)
 	tb_dbg(tb, "  NFC Credits: %#x\n", regs->nfc_credits);
 	tb_dbg(tb, "  Credits (total/control): %u/%u\n", port->total_credits,
 	       port->ctl_credits);
+
+	switch (regs->type) {
+	case TB_TYPE_PCIE_UP:
+	case TB_TYPE_PCIE_DOWN:
+		tb_dbg(tb, "  PCI device: %02x.%x\n", PCI_SLOT(port->devfn),
+						      PCI_FUNC(port->devfn));
+		break;
+	default:
+		break;
+	}
 }
 
 /**
@@ -2470,6 +2480,7 @@ struct tb_switch *tb_switch_alloc(struct tb *tb, struct device *parent,
 		/* minimum setup for tb_find_cap and tb_drom_read to work */
 		sw->ports[i].sw = sw;
 		sw->ports[i].port = i;
+		sw->ports[i].devfn = -1;
 
 		/* Control port does not need HopID allocation */
 		if (i) {
