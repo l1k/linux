@@ -49,11 +49,8 @@
  * struct icm - Internal connection manager private data
  * @request_lock: Makes sure only one message is send to ICM at time
  * @rescan_work: Work used to rescan the surviving switches after resume
- * @upstream_port: Pointer to the PCIe upstream port this host
- *		   controller is connected. This is only set for systems
- *		   where ICM needs to be started manually
  * @vnd_cap: Vendor defined capability where PCIe2CIO mailbox resides
- *	     (only set when @upstream_port is not %NULL)
+ *	     (only set for systems where ICM needs to be started manually)
  * @safe_mode: ICM is in safe mode
  * @is_supported: Checks if we can support ICM on this controller
  * @get_mode: Read and return the ICM firmware mode (optional)
@@ -66,7 +63,6 @@
 struct icm {
 	struct mutex request_lock;
 	struct delayed_work rescan_work;
-	struct pci_dev *upstream_port;
 	int vnd_cap;
 	bool safe_mode;
 	bool (*is_supported)(struct tb *tb);
@@ -664,38 +660,10 @@ icm_fr_xdomain_disconnected(struct tb *tb, const struct icm_pkg_header *hdr)
 	}
 }
 
-static struct pci_dev *get_upstream_port(struct pci_dev *pdev)
-{
-	struct pci_dev *parent;
-
-	parent = pci_upstream_bridge(pdev);
-	while (parent) {
-		if (!pci_is_pcie(parent))
-			return NULL;
-		if (pci_pcie_type(parent) == PCI_EXP_TYPE_UPSTREAM)
-			break;
-		parent = pci_upstream_bridge(parent);
-	}
-
-	if (!parent)
-		return NULL;
-
-	switch (parent->device) {
-	case PCI_DEVICE_ID_INTEL_ALPINE_RIDGE_2C_BRIDGE:
-	case PCI_DEVICE_ID_INTEL_ALPINE_RIDGE_4C_BRIDGE:
-	case PCI_DEVICE_ID_INTEL_ALPINE_RIDGE_LP_BRIDGE:
-	case PCI_DEVICE_ID_INTEL_ALPINE_RIDGE_C_4C_BRIDGE:
-	case PCI_DEVICE_ID_INTEL_ALPINE_RIDGE_C_2C_BRIDGE:
-		return parent;
-	}
-
-	return NULL;
-}
-
 static bool icm_ar_is_supported(struct tb *tb)
 {
-	struct pci_dev *upstream_port;
 	struct icm *icm = tb_priv(tb);
+	int cap;
 
 	/*
 	 * Starting from Alpine Ridge we can use ICM on Apple machines
@@ -704,22 +672,11 @@ static bool icm_ar_is_supported(struct tb *tb)
 	if (!x86_apple_machine)
 		return true;
 
-	/*
-	 * Find the upstream PCIe port in case we need to do reset
-	 * through its vendor specific registers.
-	 */
-	upstream_port = get_upstream_port(tb->nhi->pdev);
-	if (upstream_port) {
-		int cap;
-
-		cap = pci_find_ext_capability(upstream_port,
-					      PCI_EXT_CAP_ID_VNDR);
-		if (cap > 0) {
-			icm->upstream_port = upstream_port;
-			icm->vnd_cap = cap;
-
-			return true;
-		}
+	/* reset is performed through the vendor specific capability */
+	cap = pci_find_ext_capability(tb->upstream, PCI_EXT_CAP_ID_VNDR);
+	if (cap > 0) {
+		icm->vnd_cap = cap;
+		return true;
 	}
 
 	return false;
@@ -857,7 +814,7 @@ static int pci2cio_wait_completion(struct icm *icm, unsigned long timeout_msec)
 	u32 cmd;
 
 	do {
-		pci_read_config_dword(icm->upstream_port,
+		pci_read_config_dword(icm_to_tb(icm)->upstream,
 				      icm->vnd_cap + PCIE2CIO_CMD, &cmd);
 		if (!(cmd & PCIE2CIO_CMD_START)) {
 			if (cmd & PCIE2CIO_CMD_TIMEOUT)
@@ -874,7 +831,7 @@ static int pci2cio_wait_completion(struct icm *icm, unsigned long timeout_msec)
 static int pcie2cio_read(struct icm *icm, enum tb_cfg_space cs,
 			 unsigned int port, unsigned int index, u32 *data)
 {
-	struct pci_dev *pdev = icm->upstream_port;
+	struct pci_dev *pdev = icm_to_tb(icm)->upstream;
 	int ret, vnd_cap = icm->vnd_cap;
 	u32 cmd;
 
@@ -895,7 +852,7 @@ static int pcie2cio_read(struct icm *icm, enum tb_cfg_space cs,
 static int pcie2cio_write(struct icm *icm, enum tb_cfg_space cs,
 			  unsigned int port, unsigned int index, u32 data)
 {
-	struct pci_dev *pdev = icm->upstream_port;
+	struct pci_dev *pdev = icm_to_tb(icm)->upstream;
 	int vnd_cap = icm->vnd_cap;
 	u32 cmd;
 
@@ -968,7 +925,7 @@ static int icm_reset_phy_port(struct tb *tb, int phy_port)
 	u32 val0, val1;
 	int ret;
 
-	if (!icm->upstream_port)
+	if (!icm->vnd_cap)
 		return 0;
 
 	if (phy_port) {

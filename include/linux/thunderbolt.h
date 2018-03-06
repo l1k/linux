@@ -65,6 +65,7 @@ enum tb_security_level {
  * @cm_ops: Connection manager specific operations vector
  * @index: Linux assigned domain number
  * @security_level: Current security level
+ * @upstream: Pointer to the PCIe upstream port of this host controller
  * @privdata: Private connection manager specific data
  */
 struct tb {
@@ -77,6 +78,7 @@ struct tb {
 	const struct tb_cm_ops *cm_ops;
 	int index;
 	enum tb_security_level security_level;
+	struct pci_dev *upstream;
 	unsigned long privdata[0];
 };
 
