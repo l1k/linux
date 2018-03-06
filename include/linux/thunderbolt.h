@@ -70,6 +70,7 @@ enum tb_security_level {
  * @index: Linux assigned domain number
  * @security_level: Current security level
  * @nboot_acl: Number of boot ACLs the domain supports
+ * @upstream: Pointer to the PCIe upstream port of this host controller
  * @privdata: Private connection manager specific data
  */
 struct tb {
@@ -83,6 +84,7 @@ struct tb {
 	int index;
 	enum tb_security_level security_level;
 	size_t nboot_acl;
+	struct pci_dev *upstream;
 	unsigned long privdata[0];
 };
 

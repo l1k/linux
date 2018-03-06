@@ -326,6 +326,7 @@ struct device_type tb_domain_type = {
 struct tb *tb_domain_alloc(struct tb_nhi *nhi, size_t privsize)
 {
 	struct tb *tb;
+	int i;
 
 	/*
 	 * Make sure the structure sizes map with that the hardware
@@ -350,6 +351,15 @@ struct tb *tb_domain_alloc(struct tb_nhi *nhi, size_t privsize)
 	if (!tb->wq)
 		goto err_remove_ida;
 
+	tb->upstream = nhi->pdev;
+	for (i = 0; i < 2; i++) {
+		tb->upstream = pci_upstream_bridge(tb->upstream);
+		if (!tb->upstream) {
+			pci_err(nhi->pdev, "cannot find upstream, aborting\n");
+			goto err_destroy_wq;
+		}
+	}
+
 	tb->dev.parent = &nhi->pdev->dev;
 	tb->dev.bus = &tb_bus_type;
 	tb->dev.type = &tb_domain_type;
@@ -359,6 +369,8 @@ struct tb *tb_domain_alloc(struct tb_nhi *nhi, size_t privsize)
 
 	return tb;
 
+err_destroy_wq:
+	destroy_workqueue(tb->wq);
 err_remove_ida:
 	ida_simple_remove(&tb_domain_ida, tb->index);
 err_free:
