@@ -18,6 +18,20 @@
 #include "dma_port.h"
 
 /**
+ * struct tb_cm - Native Thunderbolt connection manager
+ * @pci_notifier: Notifier to correlate PCI devices with Thunderbolt ports
+ * @tunnel_list: List of active tunnels
+ * @hotplug_active: tb_handle_hotplug() will stop processing plug events and
+ *		    exit if this is not set (it needs to acquire the lock one
+ *		    more time). Used to drain wq after cfg has been paused.
+ */
+struct tb_cm {
+	struct notifier_block pci_notifier;
+	struct list_head tunnel_list;
+	unsigned int hotplug_active:1;
+};
+
+/**
  * struct tb_switch_nvm - Structure holding switch NVM information
  * @major: Major version number of the active NVM portion
  * @minor: Minor version number of the active NVM portion
@@ -128,6 +142,9 @@ struct tb_switch {
  * @pci: Data specific to PCIe adapters
  * @pci.devfn: PCI slot/function according to DROM
  * @pci.unknown: Unknown data in DROM (to be reverse-engineered)
+ * @pci.dev: PCI device of corresponding PCIe upstream or downstream port
+ *	     (%NULL if not found or if removed by PCI core).  To access,
+ *	     acquire Thunderbolt lock, call pci_dev_get(), release the lock.
  */
 struct tb_port {
 	struct tb_regs_port_header config;
@@ -143,6 +160,7 @@ struct tb_port {
 		struct {
 			u8 devfn;
 			u8 unknown[9];
+			struct pci_dev *dev;
 		} pci;
 	};
 };
@@ -250,6 +268,11 @@ static inline void *tb_priv(struct tb *tb)
 	return (void *)tb->privdata;
 }
 
+static inline struct tb *tb_from_priv(void *priv)
+{
+	return priv - offsetof(struct tb, privdata);
+}
+
 #define TB_AUTOSUSPEND_DELAY		15000 /* ms */
 
 /* helper functions & macros */
@@ -331,6 +354,19 @@ static inline int tb_port_write(struct tb_port *port, const void *buffer,
 			    offset,
 			    length);
 }
+
+/**
+ * tb_sw_for_each_port() - iterate over ports on a switch
+ * @switch: pointer to struct tb_switch over whose ports shall be iterated
+ * @port: pointer to struct tb_port which shall be used as the iterator
+ *
+ * Excludes port 0, which is the switch itself and therefore irrelevant for
+ * most iterations.
+ */
+#define tb_sw_for_each_port(switch, port)				 \
+	for (port = &(switch)->ports[1];				 \
+	     port <= &(switch)->ports[(switch)->config.max_port_number]; \
+	     port++)
 
 #define tb_err(tb, fmt, arg...) dev_err(&(tb)->nhi->pdev->dev, fmt, ## arg)
 #define tb_WARN(tb, fmt, arg...) dev_WARN(&(tb)->nhi->pdev->dev, fmt, ## arg)

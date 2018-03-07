@@ -13,19 +13,7 @@
 #include "tb.h"
 #include "tb_regs.h"
 #include "tunnel_pci.h"
-
-/**
- * struct tb_cm - Simple Thunderbolt connection manager
- * @tunnel_list: List of active tunnels
- * @hotplug_active: tb_handle_hotplug will stop progressing plug
- *		    events and exit if this is not set (it needs to
- *		    acquire the lock one more time). Used to drain wq
- *		    after cfg has been paused.
- */
-struct tb_cm {
-	struct list_head tunnel_list;
-	bool hotplug_active;
-};
+#include "adapter_pci.h"
 
 /* enumeration & hot plug handling */
 
@@ -355,6 +343,7 @@ static void tb_stop(struct tb *tb)
 	struct tb_pci_tunnel *tunnel;
 	struct tb_pci_tunnel *n;
 
+	bus_unregister_notifier(&pci_bus_type, &tcm->pci_notifier);
 	/* tunnels are only present after everything has been initialized */
 	list_for_each_entry_safe(tunnel, n, &tcm->tunnel_list, list) {
 		tb_pci_deactivate(tunnel);
@@ -395,6 +384,11 @@ static int tb_start(struct tb *tb)
 
 	/* Full scan to discover devices added before the driver was loaded. */
 	tb_scan_switch(tb->root_switch);
+
+	/* Correlate PCI devices with Thunderbolt ports */
+	bus_register_notifier(&pci_bus_type, &tcm->pci_notifier);
+	pci_walk_bus(tb->upstream->subordinate, tb_pci_correlate, tb);
+
 	tb_activate_pcie_devices(tb);
 
 	/* Allow tb_handle_hotplug to progress events */
@@ -469,6 +463,7 @@ struct tb *tb_probe(struct tb_nhi *nhi)
 
 	tcm = tb_priv(tb);
 	INIT_LIST_HEAD(&tcm->tunnel_list);
+	tcm->pci_notifier.notifier_call = tb_pci_notifier_call;
 
 	return tb;
 }
