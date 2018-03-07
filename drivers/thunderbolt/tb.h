@@ -18,6 +18,20 @@
 #include "dma_port.h"
 
 /**
+ * struct tb_cm - Native Thunderbolt connection manager
+ * @pci_notifier: Notifier to correlate PCI devices with Thunderbolt ports
+ * @tunnel_list: List of active tunnels
+ * @hotplug_active: tb_handle_hotplug() will stop processing plug events and
+ *		    exit if this is not set (it needs to acquire the lock one
+ *		    more time). Used to drain wq after cfg has been paused.
+ */
+struct tb_cm {
+	struct notifier_block pci_notifier;
+	struct list_head tunnel_list;
+	bool hotplug_active;
+};
+
+/**
  * struct tb_switch_nvm - Structure holding switch NVM information
  * @major: Major version number of the active NVM portion
  * @minor: Minor version number of the active NVM portion
@@ -123,6 +137,9 @@ struct tb_switch {
  * @link_nr: Is this primary or secondary port on the dual_link.
  * @pci: Data specific to PCIe adapters
  * @pci.devfn: PCI slot/function according to DROM
+ * @pci.dev: PCI device of corresponding PCIe upstream or downstream port
+ *	     (%NULL if not found or if removed by PCI core).  To access,
+ *	     acquire Thunderbolt lock, call pci_dev_get(), release the lock.
  */
 struct tb_port {
 	struct tb_regs_port_header config;
@@ -137,6 +154,7 @@ struct tb_port {
 	union {
 		struct {
 			u8 devfn;
+			struct pci_dev *dev;
 		} pci;
 	};
 };
