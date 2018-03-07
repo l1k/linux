@@ -2728,6 +2728,7 @@ static void tb_stop(struct tb *tb)
 	struct tb_tunnel *n;
 
 	cancel_delayed_work(&tcm->remove_work);
+	tb_pci_stop_associate(tcm);
 	/* tunnels are only present after everything has been initialized */
 	list_for_each_entry_safe(tunnel, n, &tcm->tunnel_list, list) {
 		/*
@@ -2845,6 +2846,8 @@ static int tb_start(struct tb *tb, bool reset)
 	tb_create_usb3_tunnels(tb->root_switch);
 	/* Add DP IN resources for the root switch */
 	tb_add_dp_resources(tb->root_switch);
+	/* Associate PCI devices with PCIe Adapters */
+	tb_pci_start_associate(tb, tcm);
 	/* Make the discovered switches available to the userspace */
 	device_for_each_child(&tb->root_switch->dev, NULL,
 			      tb_scan_finalize_switch);
@@ -3165,6 +3168,7 @@ struct tb *tb_probe(struct tb_nhi *nhi)
 	INIT_LIST_HEAD(&tcm->dp_resources);
 	INIT_DELAYED_WORK(&tcm->remove_work, tb_remove_work);
 	tb_init_bandwidth_groups(tcm);
+	tb_pci_init(tcm, nhi);
 
 	tb_dbg(tb, "using software connection manager\n");
 

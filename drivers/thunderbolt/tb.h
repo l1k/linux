@@ -270,6 +270,9 @@ struct tb_bandwidth_group {
  * @redrive: For DP IN, if true the adapter is in redrive mode.
  * @devfn: For PCIe, the Device/Function number to associate this Adapter
  *	   with a Function of the PCIe Switch/Endpoint (%-1 if unknown).
+ * @pdev: For PCIe, the PCI device associated with this Adapter
+ *	  (%NULL if currently not enumerated by PCI core).  To access,
+ *	  acquire Thunderbolt lock, call pci_dev_get(), release the lock.
  *
  * In USB4 terminology this structure represents an adapter (protocol or
  * lane adapter).
@@ -300,6 +303,9 @@ struct tb_port {
 	unsigned int max_bw;
 	bool redrive;
 	u16 devfn;
+#ifdef CONFIG_PCI
+	struct pci_dev *pdev;
+#endif
 };
 
 /**
@@ -473,6 +479,8 @@ struct tb_path {
  * @remove_work: Work used to remove any unplugged routers after
  *		 runtime resume
  * @groups: Bandwidth groups used in this domain.
+ * @pci_notifier: Notifier to associate PCI devices with Thunderbolt ports
+ * @pci_root: PCI bus below which Thunderbolt tunnels are established
  */
 struct tb_cm {
 	struct list_head tunnel_list;
@@ -480,6 +488,10 @@ struct tb_cm {
 	bool hotplug_active;
 	struct delayed_work remove_work;
 	struct tb_bandwidth_group groups[MAX_GROUPS];
+#ifdef CONFIG_PCI
+	struct notifier_block pci_notifier;
+	struct pci_bus *pci_root;
+#endif
 };
 
 /**
@@ -560,6 +572,11 @@ struct tb_cm_ops {
 static inline void *tb_priv(struct tb *tb)
 {
 	return (void *)tb->privdata;
+}
+
+static inline struct tb *tb_from_priv(void *priv)
+{
+	return priv - offsetof(struct tb, privdata);
 }
 
 #define TB_AUTOSUSPEND_DELAY		15000 /* ms */
@@ -1483,6 +1500,16 @@ static inline void tb_xdomain_debugfs_init(struct tb_xdomain *xd) { }
 static inline void tb_xdomain_debugfs_remove(struct tb_xdomain *xd) { }
 static inline void tb_service_debugfs_init(struct tb_service *svc) { }
 static inline void tb_service_debugfs_remove(struct tb_service *svc) { }
+#endif
+
+#ifdef CONFIG_PCI
+void tb_pci_init(struct tb_cm *tcm, struct tb_nhi *nhi);
+void tb_pci_start_associate(struct tb *tb, struct tb_cm *tcm);
+void tb_pci_stop_associate(struct tb_cm *tcm);
+#else
+static inline void tb_pci_init(struct tb_cm *tcm, struct tb_nhi *nhi) { }
+static inline void tb_pci_start_associate(struct tb *tb, struct tb_cm *tcm) { }
+static inline void tb_pci_stop_associate(struct tb_cm *tcm) { }
 #endif
 
 #endif
