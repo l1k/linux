@@ -27,6 +27,26 @@
 #define NVM_FLASH_SIZE		0x45
 
 /**
+ * struct tb_cm - Simple Thunderbolt connection manager
+ * @tunnel_list: List of active tunnels
+ * @dp_resources: List of available DP resources for DP tunneling
+ * @pci_notifier: Notifier to correlate PCI devices with Thunderbolt ports
+ * @hotplug_active: tb_handle_hotplug will stop progressing plug
+ *		    events and exit if this is not set (it needs to
+ *		    acquire the lock one more time). Used to drain wq
+ *		    after cfg has been paused.
+ * @remove_work: Work used to remove any unplugged routers after
+ *		 runtime resume
+ */
+struct tb_cm {
+	struct list_head tunnel_list;
+	struct list_head dp_resources;
+	struct notifier_block pci_notifier;
+	bool hotplug_active;
+	struct delayed_work remove_work;
+};
+
+/**
  * struct tb_nvm - Structure holding NVM information
  * @dev: Owner of the NVM
  * @major: Major version number of the active NVM portion
@@ -200,6 +220,9 @@ struct tb_switch {
  * @list: Used to link ports to DP resources list
  * @pci: Data specific to PCIe adapters
  * @pci.devfn: PCI slot/function according to DROM
+ * @pci.dev: PCI device of corresponding PCIe upstream or downstream port
+ *	     (%NULL if not found or if removed by PCI core).  To access,
+ *	     acquire Thunderbolt lock, call pci_dev_get(), release the lock.
  *
  * In USB4 terminology this structure represents an adapter (protocol or
  * lane adapter).
@@ -224,6 +247,7 @@ struct tb_port {
 	union {
 		struct {
 			u8 devfn;
+			struct pci_dev *dev;
 		} pci;
 	};
 };
@@ -429,6 +453,11 @@ struct tb_cm_ops {
 static inline void *tb_priv(struct tb *tb)
 {
 	return (void *)tb->privdata;
+}
+
+static inline struct tb *tb_from_priv(void *priv)
+{
+	return priv - offsetof(struct tb, privdata);
 }
 
 #define TB_AUTOSUSPEND_DELAY		15000 /* ms */

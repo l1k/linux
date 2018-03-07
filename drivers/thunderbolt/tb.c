@@ -14,26 +14,9 @@
 #include "tb.h"
 #include "tb_regs.h"
 #include "tunnel.h"
+#include "adapter_pci.h"
 
 #define TB_TIMEOUT	100 /* ms */
-
-/**
- * struct tb_cm - Simple Thunderbolt connection manager
- * @tunnel_list: List of active tunnels
- * @dp_resources: List of available DP resources for DP tunneling
- * @hotplug_active: tb_handle_hotplug will stop progressing plug
- *		    events and exit if this is not set (it needs to
- *		    acquire the lock one more time). Used to drain wq
- *		    after cfg has been paused.
- * @remove_work: Work used to remove any unplugged routers after
- *		 runtime resume
- */
-struct tb_cm {
-	struct list_head tunnel_list;
-	struct list_head dp_resources;
-	bool hotplug_active;
-	struct delayed_work remove_work;
-};
 
 static inline struct tb *tcm_to_tb(struct tb_cm *tcm)
 {
@@ -1298,6 +1281,7 @@ static void tb_stop(struct tb *tb)
 	struct tb_tunnel *n;
 
 	cancel_delayed_work(&tcm->remove_work);
+	bus_unregister_notifier(&pci_bus_type, &tcm->pci_notifier);
 	/* tunnels are only present after everything has been initialized */
 	list_for_each_entry_safe(tunnel, n, &tcm->tunnel_list, list) {
 		/*
@@ -1369,6 +1353,11 @@ static int tb_start(struct tb *tb)
 	tb_switch_tmu_enable(tb->root_switch);
 	/* Full scan to discover devices added before the driver was loaded. */
 	tb_scan_switch(tb->root_switch);
+
+	/* Correlate PCI devices with Thunderbolt ports */
+	bus_register_notifier(&pci_bus_type, &tcm->pci_notifier);
+	pci_walk_bus(tb->upstream->subordinate, tb_pci_correlate, tb);
+
 	/* Find out tunnels created by the boot firmware */
 	tb_discover_tunnels(tb->root_switch);
 	/*
@@ -1593,6 +1582,7 @@ struct tb *tb_probe(struct tb_nhi *nhi)
 	INIT_LIST_HEAD(&tcm->tunnel_list);
 	INIT_LIST_HEAD(&tcm->dp_resources);
 	INIT_DELAYED_WORK(&tcm->remove_work, tb_remove_work);
+	tcm->pci_notifier.notifier_call = tb_pci_notifier_call;
 
 	tb_dbg(tb, "using software connection manager\n");
 
