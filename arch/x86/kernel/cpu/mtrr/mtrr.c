@@ -58,11 +58,17 @@
 #define MTRR_TO_PHYS_WC_OFFSET 1000
 
 u32 num_var_ranges;
+static bool mtrr_aps_check;
 static bool __mtrr_enabled;
 
 static bool mtrr_enabled(void)
 {
 	return __mtrr_enabled;
+}
+
+void set_mtrr_aps_check(bool enable)
+{
+	mtrr_aps_check = enable;
 }
 
 unsigned int mtrr_usage_table[MTRR_MAX_VAR_RANGES];
@@ -147,6 +153,7 @@ struct set_mtrr_data {
 	unsigned long	smp_size;
 	unsigned int	smp_reg;
 	mtrr_type	smp_type;
+	int		smp_cpu;
 };
 
 /**
@@ -177,6 +184,19 @@ static int mtrr_rendezvous_handler(void *info)
 		mtrr_if->set(data->smp_reg, data->smp_base,
 			     data->smp_size, data->smp_type);
 	} else if (mtrr_aps_delayed_init || !cpu_online(smp_processor_id())) {
+		/*
+		 * Reduce redundancy by only syncing the cpu
+		 * who has issued the sync request during resumed:
+		 * start_secondary() ->
+		 *  smp_callin() ->
+		 *   smp_store_cpu_info() ->
+		 *    identify_secondary_cpu() ->
+		 *     mtrr_ap_init() ->
+		 *      set_mtrr_from_inactive_cpu(smp_processor_id())
+		 */
+		if (mtrr_aps_check &&
+		    data->smp_cpu != smp_processor_id())
+			return 0;
 		mtrr_if->set_all();
 	}
 	return 0;
@@ -230,7 +250,8 @@ set_mtrr(unsigned int reg, unsigned long base, unsigned long size, mtrr_type typ
 	struct set_mtrr_data data = { .smp_reg = reg,
 				      .smp_base = base,
 				      .smp_size = size,
-				      .smp_type = type
+				      .smp_type = type,
+				      .smp_cpu = smp_processor_id()
 				    };
 
 	stop_machine(mtrr_rendezvous_handler, &data, cpu_online_mask);
@@ -242,7 +263,8 @@ static void set_mtrr_cpuslocked(unsigned int reg, unsigned long base,
 	struct set_mtrr_data data = { .smp_reg = reg,
 				      .smp_base = base,
 				      .smp_size = size,
-				      .smp_type = type
+				      .smp_type = type,
+				      .smp_cpu = smp_processor_id()
 				    };
 
 	stop_machine_cpuslocked(mtrr_rendezvous_handler, &data, cpu_online_mask);
@@ -254,7 +276,8 @@ static void set_mtrr_from_inactive_cpu(unsigned int reg, unsigned long base,
 	struct set_mtrr_data data = { .smp_reg = reg,
 				      .smp_base = base,
 				      .smp_size = size,
-				      .smp_type = type
+				      .smp_type = type,
+				      .smp_cpu = smp_processor_id()
 				    };
 
 	stop_machine_from_inactive_cpu(mtrr_rendezvous_handler, &data,
