@@ -1317,12 +1317,12 @@ void __init native_smp_prepare_cpus(unsigned int max_cpus)
 
 void arch_enable_nonboot_cpus_begin(void)
 {
-	set_mtrr_aps_delayed_init();
+	set_mtrr_aps_check(true);
 }
 
 void arch_enable_nonboot_cpus_end(void)
 {
-	mtrr_aps_init();
+	set_mtrr_aps_check(false);
 }
 
 /*
