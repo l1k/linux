@@ -147,6 +147,8 @@ static struct tb_port *tb_find_unused_down_port(struct tb_switch *sw)
 	int res;
 	int data;
 	for (i = 1; i <= sw->config.max_port_number; i++) {
+		if (sw->ports[i].disabled)
+			continue;
 		if (tb_is_upstream_port(&sw->ports[i]))
 			continue;
 		if (sw->ports[i].config.type != TB_TYPE_PCIE_DOWN)
