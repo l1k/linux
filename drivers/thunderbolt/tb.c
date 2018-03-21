@@ -234,6 +234,8 @@ static struct tb_port *tb_find_unused_port(struct tb_switch *sw,
 	struct tb_port *port;
 
 	tb_switch_for_each_port(sw, port) {
+		if (port->disabled)
+			continue;
 		if (tb_is_upstream_port(port))
 			continue;
 		if (port->config.type != type)
