@@ -732,6 +732,8 @@ int pciehp_reset_slot(struct slot *slot, int probe)
 		 pci_pcie_cap(ctrl->pcie->port) + PCI_EXP_SLTCTL, 0);
 	if (pciehp_poll_mode)
 		del_timer_sync(&ctrl->poll_timer);
+	else
+		synchronize_irq(ctrl->pcie->irq);
 
 	pci_reset_bridge_secondary_bus(ctrl->pcie->port);
 
