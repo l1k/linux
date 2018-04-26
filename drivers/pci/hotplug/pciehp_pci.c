@@ -74,9 +74,8 @@ int pciehp_configure_device(struct slot *p_slot)
 	return ret;
 }
 
-int pciehp_unconfigure_device(struct slot *p_slot)
+void pciehp_unconfigure_device(struct slot *p_slot)
 {
-	int rc = 0;
 	u8 presence = 0;
 	struct pci_dev *dev, *temp;
 	struct controller *ctrl = p_slot->ctrl;
@@ -87,7 +86,7 @@ int pciehp_unconfigure_device(struct slot *p_slot)
 	mutex_lock(&pciehp_disconnected);
 	if (pci_dev_is_disconnected(bridge)) {
 		mutex_unlock(&pciehp_disconnected);
-		return -ENODEV;
+		return;
 	}
 	pci_walk_bus(parent, pci_dev_set_disconnected, NULL);
 	pci_lock_rescan_remove();
@@ -121,5 +120,4 @@ int pciehp_unconfigure_device(struct slot *p_slot)
 	}
 
 	pci_unlock_rescan_remove();
-	return rc;
 }
