@@ -240,15 +240,17 @@ static int pciehp_probe(struct pcie_device *dev)
 
 	/* Check if slot is occupied */
 	slot = ctrl->slot;
+	mutex_lock(&slot->lock);
 	pciehp_get_adapter_status(slot, &occupied);
 	pciehp_get_power_status(slot, &poweron);
-	if (occupied && pciehp_force) {
+	if (occupied && slot->state == OFF_STATE && pciehp_force) {
 		atomic_or(PCI_EXP_SLTSTA_PDC, &ctrl->pending_events);
 		irq_wake_thread(ctrl->pcie->irq, ctrl);
 	}
 	/* If empty slot's power status is on, turn power off */
 	if (!occupied && poweron && POWER_CTRL(ctrl))
 		pciehp_power_off_slot(slot);
+	mutex_unlock(&slot->lock);
 
 	return 0;
 
@@ -289,13 +291,13 @@ static int pciehp_resume(struct pcie_device *dev)
 
 	/* Check if slot is occupied */
 	pciehp_get_adapter_status(slot, &status);
-	down_read(&pci_bus_sem);
-	if ((status && list_empty(&dev->port->subordinate->devices)) ||
-	    (!status && !list_empty(&dev->port->subordinate->devices))) {
+	mutex_lock(&slot->lock);
+	if ((status && slot->state == OFF_STATE) ||
+	    (!status && slot->state == ON_STATE)) {
 		atomic_or(PCI_EXP_SLTSTA_PDC, &ctrl->pending_events);
 		irq_wake_thread(ctrl->pcie->irq, ctrl);
 	}
-	up_read(&pci_bus_sem);
+	mutex_unlock(&slot->lock);
 
 	return 0;
 }

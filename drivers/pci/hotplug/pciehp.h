@@ -120,11 +120,12 @@ struct controller {
 	int request_result;
 };
 
-#define STATIC_STATE			0
+#define OFF_STATE			0
 #define BLINKINGON_STATE		1
 #define BLINKINGOFF_STATE		2
 #define POWERON_STATE			3
 #define POWEROFF_STATE			4
+#define ON_STATE			5
 
 /*
  * Flags to request an action from the IRQ thread.  These are stored together
@@ -150,8 +151,7 @@ int pciehp_sysfs_enable_slot(struct slot *slot);
 int pciehp_sysfs_disable_slot(struct slot *slot);
 void pciehp_handle_button_press(struct slot *slot);
 void pciehp_handle_disable_request(struct slot *slot);
-void pciehp_handle_link_change(struct slot *slot);
-void pciehp_handle_presence_change(struct slot *slot);
+void pciehp_handle_presence_or_link_change(struct slot *slot, u32 events);
 int pciehp_configure_device(struct slot *p_slot);
 void pciehp_unconfigure_device(struct slot *p_slot);
 void pciehp_queue_pushbutton_work(struct work_struct *work);
