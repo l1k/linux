@@ -11,6 +11,7 @@
 #define __KS8851_H__
 
 #include <linux/eeprom_93cx6.h>
+#include <uapi/linux/sched/types.h>
 
 #define KS_CCR					0x08
 #define CCR_LE					(1 << 10)   /* KSZ8851-16MLL */
@@ -368,6 +369,7 @@ union ks8851_tx_hdr {
  * @start_xmit: start_xmit() implementation callback
  * @rx_skb: rx_skb() implementation callback
  * @flush_tx_work: flush_tx_work() implementation callback
+ * @irqpoll: Optional kthread to poll for interrupts if IRQ is not connected
  *
  * The @statelock is used to protect information in the structure which may
  * need to be accessed via several sources, such as the network driver layer
@@ -423,6 +425,8 @@ struct ks8851_net {
 	void			(*rx_skb)(struct ks8851_net *ks,
 					  struct sk_buff *skb);
 	void			(*flush_tx_work)(struct ks8851_net *ks);
+
+	struct task_struct	*irqpoll;
 };
 
 int ks8851_probe_common(struct net_device *netdev, struct device *dev,
