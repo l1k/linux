@@ -16,6 +16,7 @@
 #include <linux/interrupt.h>
 #include <linux/module.h>
 #include <linux/kernel.h>
+#include <linux/kthread.h>
 #include <linux/netdevice.h>
 #include <linux/etherdevice.h>
 #include <linux/ethtool.h>
@@ -24,6 +25,7 @@
 #include <linux/mii.h>
 #include <linux/eeprom_93cx6.h>
 #include <linux/regulator/consumer.h>
+#include <linux/sched/types.h>
 
 #include <linux/spi/spi.h>
 #include <linux/gpio.h>
@@ -89,6 +91,7 @@ union ks8851_tx_hdr {
  * @vdd_reg:	Optional regulator supplying the chip
  * @vdd_io: Optional digital power supply for IO
  * @gpio: Optional reset_n gpio
+ * @irqpoll: Optional kthread to poll for interrupts if IRQ is not connected
  *
  * The @lock ensures that the chip is protected when certain operations are
  * in progress. When the read or write packet transfer is in progress, most
@@ -138,6 +141,7 @@ struct ks8851_net {
 	struct regulator	*vdd_reg;
 	struct regulator	*vdd_io;
 	int			gpio;
+	struct task_struct	*irqpoll;
 };
 
 static int msg_enable;
@@ -603,6 +607,11 @@ static irqreturn_t ks8851_irq(int irq, void *_ks)
 	netif_dbg(ks, intr, ks->netdev,
 		  "%s: status 0x%04x\n", __func__, status);
 
+	if (!status) {
+		mutex_unlock(&ks->lock);
+		return IRQ_NONE;
+	}
+
 	if (status & IRQ_LCI)
 		handled |= IRQ_LCI;
 
@@ -674,6 +683,18 @@ static irqreturn_t ks8851_irq(int irq, void *_ks)
 		netif_wake_queue(ks->netdev);
 
 	return IRQ_HANDLED;
+}
+
+static int ks8851_irqpoll(void *data)
+{
+	struct ks8851_net *ks = data;
+
+	while (!kthread_should_stop()) {
+		ks8851_irq(IRQ_NOTCONNECTED, ks);
+		usleep_range(800, 1000);
+	}
+
+	return 0;
 }
 
 /**
@@ -791,14 +812,26 @@ static void ks8851_tx_work(struct work_struct *work)
 static int ks8851_net_open(struct net_device *dev)
 {
 	struct ks8851_net *ks = netdev_priv(dev);
+	struct sched_param param;
 	int ret;
 
-	ret = request_threaded_irq(dev->irq, NULL, ks8851_irq,
-				   IRQF_TRIGGER_LOW | IRQF_ONESHOT,
-				   dev->name, ks);
-	if (ret < 0) {
-		netdev_err(dev, "failed to get irq\n");
-		return ret;
+	if (dev->irq > 0) {
+		ret = request_threaded_irq(dev->irq, NULL, ks8851_irq,
+					   IRQF_TRIGGER_LOW | IRQF_ONESHOT,
+					   dev->name, ks);
+		if (ret < 0) {
+			netdev_err(dev, "failed to get irq\n");
+			return ret;
+		}
+	} else {
+		ks->irqpoll = kthread_create(&ks8851_irqpoll, ks, "irqpoll/%s", dev->name);
+		if (IS_ERR(ks->irqpoll)) {
+			netdev_err(dev, "failed to create irqpoll thread\n");
+			return PTR_ERR(ks->irqpoll);
+		}
+
+		param.sched_priority = MAX_USER_RT_PRIO/2;
+		sched_setscheduler_nocheck(ks->irqpoll, SCHED_FIFO, &param);
 	}
 
 	/* lock the card, even if we may not actually be doing anything
@@ -859,6 +892,9 @@ static int ks8851_net_open(struct net_device *dev)
 	ks8851_wrreg16(ks, KS_ISR, STD_IRQ);
 	ks8851_wrreg16(ks, KS_IER, STD_IRQ);
 
+	if (ks->irqpoll)
+		wake_up_process(ks->irqpoll);
+
 	netif_start_queue(ks->netdev);
 
 	netif_dbg(ks, ifup, ks->netdev, "network device up\n");
@@ -915,7 +951,10 @@ static int ks8851_net_stop(struct net_device *dev)
 		dev_kfree_skb(txb);
 	}
 
-	free_irq(dev->irq, ks);
+	if (dev->irq > 0)
+		free_irq(dev->irq, ks);
+	else
+		kthread_stop(ks->irqpoll);
 
 	return 0;
 }
@@ -1554,8 +1593,9 @@ static int ks8851_probe(struct spi_device *spi)
 		goto err_netdev;
 	}
 
-	netdev_info(ndev, "revision %d, MAC %pM, IRQ %d, %s EEPROM\n",
+	netdev_info(ndev, "revision %d, MAC %pM, IRQ %d%s, %s EEPROM\n",
 		    CIDER_REV_GET(cider), ndev->dev_addr, ndev->irq,
+		    ndev->irq <= 0 ? " (polling)" : "",
 		    ks->rc_ccr & CCR_EEPROM ? "has" : "no");
 
 	return 0;
