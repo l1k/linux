@@ -424,7 +424,8 @@ struct ks8851_net {
 					      struct net_device *dev);
 	void			(*rx_skb)(struct ks8851_net *ks,
 					  struct sk_buff *skb);
-	void			(*flush_tx_work)(struct ks8851_net *ks);
+	int			(*start_tx_thread)(struct ks8851_net *ks);
+	void			(*stop_tx_thread)(struct ks8851_net *ks);
 
 	struct task_struct	*irqpoll;
 };

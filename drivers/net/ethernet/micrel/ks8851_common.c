@@ -439,14 +439,22 @@ static int ks8851_irqpoll(void *data)
 	return 0;
 }
 
+static int ks8851_start_tx_thread(struct ks8851_net *ks)
+{
+	if (ks->start_tx_thread)
+		return ks->start_tx_thread(ks);
+
+	return 0;
+}
+
 /**
- * ks8851_flush_tx_work - flush outstanding TX work
+ * ks8851_stop_tx_thread - stop TX kthread
  * @ks: The device state
  */
-static void ks8851_flush_tx_work(struct ks8851_net *ks)
+static void ks8851_stop_tx_thread(struct ks8851_net *ks)
 {
-	if (ks->flush_tx_work)
-		ks->flush_tx_work(ks);
+	if (ks->stop_tx_thread)
+		ks->stop_tx_thread(ks);
 }
 
 /**
@@ -480,6 +488,10 @@ static int ks8851_net_open(struct net_device *dev)
 
 		sched_set_fifo(ks->irqpoll);
 	}
+
+	ret = ks8851_start_tx_thread(ks);
+	if (ret)
+		goto err_tx_thread;
 
 	/* lock the card, even if we may not actually be doing anything
 	 * else at the moment */
@@ -540,6 +552,13 @@ static int ks8851_net_open(struct net_device *dev)
 	ks8851_unlock(ks, &flags);
 	mii_check_link(&ks->mii);
 	return 0;
+
+err_tx_thread:
+	if (dev->irq > 0)
+		free_irq(dev->irq, ks);
+	else
+		kthread_stop(ks->irqpoll);
+	return ret;
 }
 
 /**
@@ -566,7 +585,7 @@ static int ks8851_net_stop(struct net_device *dev)
 	ks8851_unlock(ks, &flags);
 
 	/* stop any outstanding work */
-	ks8851_flush_tx_work(ks);
+	ks8851_stop_tx_thread(ks);
 	flush_work(&ks->rxctrl_work);
 
 	ks8851_lock(ks, &flags);

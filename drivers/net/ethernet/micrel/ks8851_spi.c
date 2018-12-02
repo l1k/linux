@@ -31,7 +31,7 @@ static int msg_enable;
 /**
  * struct ks8851_net_spi - KS8851 SPI driver private data
  * @lock: Lock to ensure that the device is not accessed when busy.
- * @tx_work: Work queue for tx packets
+ * @tx_thread: Thread for sending TX packets.
  * @ks8851: KS8851 driver common private data
  * @spidev: The spi device we're bound to.
  * @spi_msg1: pre-setup SPI transfer with one message, @spi_xfer1.
@@ -47,7 +47,7 @@ static int msg_enable;
 struct ks8851_net_spi {
 	struct ks8851_net	ks8851;
 	struct mutex		lock;
-	struct work_struct	tx_work;
+	struct task_struct	*tx_thread;
 	struct spi_device	*spidev;
 	struct spi_message	spi_msg1;
 	struct spi_message	spi_msg2;
@@ -298,21 +298,17 @@ static void ks8851_rx_skb_spi(struct ks8851_net *ks, struct sk_buff *skb)
 
 /**
  * ks8851_tx_work - process tx packet(s)
- * @work: The work strucutre what was scheduled.
+ * @ks: The device state.
  *
  * This is called when a number of packets have been scheduled for
  * transmission and need to be sent to the device.
  */
-static void ks8851_tx_work(struct work_struct *work)
+static void ks8851_tx_work(struct ks8851_net *ks)
 {
-	struct ks8851_net_spi *kss;
-	struct ks8851_net *ks;
 	unsigned long flags;
 	struct sk_buff *txb;
 	bool last;
 
-	kss = container_of(work, struct ks8851_net_spi, tx_work);
-	ks = &kss->ks8851;
 	last = skb_queue_empty(&ks->txq);
 
 	ks8851_lock_spi(ks, &flags);
@@ -335,15 +331,49 @@ static void ks8851_tx_work(struct work_struct *work)
 	ks8851_unlock_spi(ks, &flags);
 }
 
-/**
- * ks8851_flush_tx_work_spi - flush outstanding TX work
- * @ks: The device state
- */
-static void ks8851_flush_tx_work_spi(struct ks8851_net *ks)
+static int ks8851_tx_thread(void *data)
+{
+	struct ks8851_net *ks = data;
+
+	while (true) {
+		ks8851_tx_work(ks);
+		set_current_state(TASK_IDLE);
+		if (kthread_should_stop()) {
+			__set_current_state(TASK_RUNNING);
+			break;
+		}
+		if (!skb_queue_empty(&ks->txq)) {
+			__set_current_state(TASK_RUNNING);
+			continue;
+		}
+		schedule();
+	}
+
+	return 0;
+}
+
+static int ks8851_start_tx_thread_spi(struct ks8851_net *ks)
 {
 	struct ks8851_net_spi *kss = to_ks8851_spi(ks);
 
-	flush_work(&kss->tx_work);
+	kss->tx_thread = kthread_run(&ks8851_tx_thread, ks, "ks8851_tx");
+	if (IS_ERR(kss->tx_thread)) {
+		netdev_err(ks->netdev, "failed to create tx thread\n");
+		return PTR_ERR(kss->tx_thread);
+	}
+
+	return 0;
+}
+
+/**
+ * ks8851_stop_tx_thread_spi - stop TX kthread
+ * @ks: The device state
+ */
+static void ks8851_stop_tx_thread_spi(struct ks8851_net *ks)
+{
+	struct ks8851_net_spi *kss = to_ks8851_spi(ks);
+
+	kthread_stop(kss->tx_thread);
 }
 
 /**
@@ -395,7 +425,7 @@ static netdev_tx_t ks8851_start_xmit_spi(struct sk_buff *skb,
 	}
 
 	spin_unlock(&ks->statelock);
-	schedule_work(&kss->tx_work);
+	wake_up_process(kss->tx_thread);
 
 	return ret;
 }
@@ -423,7 +453,8 @@ static int ks8851_probe_spi(struct spi_device *spi)
 	ks->wrfifo = ks8851_wrfifo_spi;
 	ks->start_xmit = ks8851_start_xmit_spi;
 	ks->rx_skb = ks8851_rx_skb_spi;
-	ks->flush_tx_work = ks8851_flush_tx_work_spi;
+	ks->start_tx_thread = ks8851_start_tx_thread_spi;
+	ks->stop_tx_thread = ks8851_stop_tx_thread_spi;
 
 #define STD_IRQ (IRQ_LCI |	/* Link Change */	\
 		 IRQ_TXI |	/* TX done */		\
@@ -437,7 +468,6 @@ static int ks8851_probe_spi(struct spi_device *spi)
 
 	kss->spidev = spi;
 	mutex_init(&kss->lock);
-	INIT_WORK(&kss->tx_work, ks8851_tx_work);
 
 	/* initialise pre-made spi transfer messages */
 	spi_message_init(&kss->spi_msg1);
