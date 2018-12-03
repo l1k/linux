@@ -697,6 +697,24 @@ static int ks8851_irqpoll(void *data)
 	return 0;
 }
 
+static const struct sched_param normal_param = { };
+static const struct sched_param rt_param = {
+	.sched_priority = MAX_USER_RT_PRIO/2,
+};
+
+static void ks8851_adjust_prio(struct sk_buff *txb)
+{
+	if (txb->priority == TC_PRIO_REALTIME) {
+		if (current->rt_priority != rt_param.sched_priority)
+			sched_setscheduler_nocheck(current, SCHED_FIFO,
+						   &rt_param);
+	} else {
+		if (current->rt_priority != normal_param.sched_priority)
+			sched_setscheduler_nocheck(current, SCHED_NORMAL,
+						   &normal_param);
+	}
+}
+
 /**
  * calc_txlen - calculate size of message to send packet
  * @len: Length of data
@@ -789,6 +807,8 @@ static void ks8851_tx_work(struct ks8851_net *ks)
 		last = skb_queue_empty(&ks->txq);
 
 		if (txb != NULL) {
+			ks8851_adjust_prio(txb);
+
 			ks8851_wrreg16(ks, KS_RXQCR, ks->rc_rxqcr | RXQCR_SDA);
 			ks8851_wrpkt(ks, txb, last);
 			ks8851_wrreg16(ks, KS_RXQCR, ks->rc_rxqcr);

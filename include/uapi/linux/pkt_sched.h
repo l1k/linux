@@ -23,6 +23,7 @@
 #define TC_PRIO_INTERACTIVE_BULK	4
 #define TC_PRIO_INTERACTIVE		6
 #define TC_PRIO_CONTROL			7
+#define TC_PRIO_REALTIME		8
 
 #define TC_PRIO_MAX			15
 
