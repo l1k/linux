@@ -32,8 +32,6 @@ bool irq_pm_check_wakeup(struct irq_desc *desc)
  */
 void irq_pm_install_action(struct irq_desc *desc, struct irqaction *action)
 {
-	desc->nr_actions++;
-
 	if (action->flags & IRQF_FORCE_RESUME)
 		desc->force_resume_depth++;
 
@@ -56,8 +54,6 @@ void irq_pm_install_action(struct irq_desc *desc, struct irqaction *action)
  */
 void irq_pm_remove_action(struct irq_desc *desc, struct irqaction *action)
 {
-	desc->nr_actions--;
-
 	if (action->flags & IRQF_FORCE_RESUME)
 		desc->force_resume_depth--;
 

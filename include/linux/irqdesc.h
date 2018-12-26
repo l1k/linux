@@ -23,6 +23,7 @@ struct pt_regs;
  * @kstat_irqs:		irq stats per cpu
  * @handle_irq:		highlevel irq-events handler
  * @action:		the irq action chain
+ * @nr_actions:		number of installed actions on this descriptor
  * @status_use_accessors: status information
  * @core_internal_state__do_not_mess_with_it: core internal status information
  * @depth:		disable-depth, for nested irq_disable() calls
@@ -40,7 +41,6 @@ struct pt_regs;
  * @threads_oneshot:	bitfield to handle shared oneshot threads
  * @threads_active:	number of irqaction threads currently running
  * @wait_for_threads:	wait queue for sync_irq to wait for threaded handlers
- * @nr_actions:		number of installed actions on this descriptor
  * @no_suspend_depth:	number of irqactions on a irq descriptor with
  *			IRQF_NO_SUSPEND set
  * @force_resume_depth:	number of irqactions on a irq descriptor with
@@ -58,6 +58,7 @@ struct irq_desc {
 	unsigned int __percpu	*kstat_irqs;
 	irq_flow_handler_t	handle_irq;
 	struct irqaction	*action;	/* IRQ action list */
+	unsigned int		nr_actions;
 	unsigned int		status_use_accessors;
 	unsigned int		core_internal_state__do_not_mess_with_it;
 	unsigned int		depth;		/* nested irq disables */
@@ -82,7 +83,6 @@ struct irq_desc {
 	atomic_t		threads_active;
 	wait_queue_head_t       wait_for_threads;
 #ifdef CONFIG_PM_SLEEP
-	unsigned int		nr_actions;
 	unsigned int		no_suspend_depth;
 	unsigned int		cond_suspend_depth;
 	unsigned int		force_resume_depth;
