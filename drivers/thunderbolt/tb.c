@@ -9,6 +9,7 @@
 #include <linux/slab.h>
 #include <linux/errno.h>
 #include <linux/delay.h>
+#include <linux/irq.h>
 #include <linux/pm_runtime.h>
 
 #include "tb.h"
@@ -207,14 +208,36 @@ static int tb_enable_tmu(struct tb_switch *sw)
 }
 
 /**
+ * tb_port_score() - calculate @port's elegibility for tunnel establishment
+ */
+static int tb_port_score(struct tb_port *port)
+{
+	int score = 100;
+
+	/* penalize ports sharing their IRQ with other devices */
+	if (port->pci.dev) {
+		struct irq_desc *desc = irq_to_desc(port->pci.dev->irq);
+		score -= desc->nr_actions * 100;
+	}
+
+	return score;
+}
+
+/**
  * tb_find_unused_port() - return the first inactive port on @sw
  * @sw: Switch to find the port on
  * @type: Port type to look for
+ *
+ * Rank the inactive PCIe down ports on @sw and return the one best suited for
+ * tunnel establishment.  Usually it's the first port found, but if it shares
+ * the IRQ with other devices and a second port is present which doesn't,
+ * that second one is preferred.
  */
 static struct tb_port *tb_find_unused_port(struct tb_switch *sw,
 					   enum tb_port_type type)
 {
-	struct tb_port *port;
+	struct tb_port *port, *best = NULL;
+	int best_score = INT_MIN;
 
 	tb_switch_for_each_port(sw, port) {
 		if (port->disabled)
@@ -227,9 +250,14 @@ static struct tb_port *tb_find_unused_port(struct tb_switch *sw,
 			continue;
 		if (tb_port_is_enabled(port))
 			continue;
-		return port;
+		if (tb_port_score(port) > best_score)
+			best = port;
 	}
-	return NULL;
+
+	if (!best)
+		return NULL;
+
+	return best;
 }
 
 static struct tb_port *tb_find_usb3_down(struct tb_switch *sw,
