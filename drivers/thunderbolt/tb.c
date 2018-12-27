@@ -8,6 +8,7 @@
 #include <linux/slab.h>
 #include <linux/errno.h>
 #include <linux/delay.h>
+#include <linux/irq.h>
 #include <linux/platform_data/x86/apple.h>
 
 #include "tb.h"
@@ -126,7 +127,28 @@ static struct tb_port *tb_find_pci_up_port(struct tb_switch *sw)
 }
 
 /**
- * find_unused_down_port() - return the first inactive PCIe down port on @sw
+ * tb_port_score() - calculate @port's elegibility for tunnel establishment
+ */
+static int tb_port_score(struct tb_port *port)
+{
+	int score = 100;
+
+	/* penalize ports sharing their IRQ with other devices */
+	if (port->pci.dev) {
+		struct irq_desc *desc = irq_to_desc(port->pci.dev->irq);
+		score -= desc->nr_actions * 100;
+	}
+
+	return score;
+}
+
+/**
+ * find_unused_down_port() - return inactive PCIe down port on @sw
+ *
+ * Rank the inactive PCIe down ports on @sw and return the one best suited for
+ * tunnel establishment.  Usually it's the first port found, but if it shares
+ * the IRQ with other devices and a second port is present which doesn't,
+ * that second one is preferred.
  */
 static struct tb_port *tb_find_unused_down_port(struct tb_switch *sw)
 {
@@ -134,6 +156,8 @@ static struct tb_port *tb_find_unused_down_port(struct tb_switch *sw)
 	int cap;
 	int res;
 	int data;
+	int best = 0, best_score = INT_MIN;
+
 	for (i = 1; i <= sw->config.max_port_number; i++) {
 		if (sw->ports[i].disabled)
 			continue;
@@ -149,9 +173,14 @@ static struct tb_port *tb_find_unused_down_port(struct tb_switch *sw)
 			continue;
 		if (data & 0x80000000)
 			continue;
-		return &sw->ports[i];
+		if (tb_port_score(&sw->ports[i]) > best_score)
+			best = i;
 	}
-	return NULL;
+
+	if (!best)
+		return NULL;
+
+	return &sw->ports[best];
 }
 
 /**
