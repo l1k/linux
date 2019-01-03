@@ -1753,6 +1753,8 @@ bool pci_check_pme_status(struct pci_dev *dev)
 	pci_read_config_word(dev, pmcsr_pos, &pmcsr);
 	if (!(pmcsr & PCI_PM_CTRL_PME_STATUS))
 		return false;
+	if (pmcsr == ~0)
+		return false;
 
 	/* Clear PME status. */
 	pmcsr |= PCI_PM_CTRL_PME_STATUS;
