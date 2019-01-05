@@ -459,11 +459,11 @@ static void tb_switch_nvm_remove(struct tb_switch *sw)
 
 /* port utility functions */
 
-static const char *tb_port_type(struct tb_regs_port_header *port)
+static const char *tb_port_type(struct tb_regs_port_header *config)
 {
-	switch (port->type >> 16) {
+	switch (config->type >> 16) {
 	case 0:
-		switch ((u8) port->type) {
+		switch ((u8) config->type) {
 		case 0:
 			return "Inactive";
 		case 1:
@@ -488,17 +488,20 @@ static const char *tb_port_type(struct tb_regs_port_header *port)
 	}
 }
 
-static void tb_dump_port(struct tb *tb, struct tb_regs_port_header *port)
+static void tb_dump_port(struct tb_port *port)
 {
+	struct tb_regs_port_header *config = &port->config;
+	struct tb *tb = port->sw->tb;
+
 	tb_dbg(tb,
 	       " Port %d: %x:%x (Revision: %d, TB Version: %d, Type: %s (%#x))\n",
-	       port->port_number, port->vendor_id, port->device_id,
-	       port->revision, port->thunderbolt_version, tb_port_type(port),
-	       port->type);
+	       config->port_number, config->vendor_id, config->device_id,
+	       config->revision, config->thunderbolt_version,
+	       tb_port_type(config), config->type);
 	tb_dbg(tb, "  Max hop id (in/out): %d/%d\n",
-	       port->max_in_hop_id, port->max_out_hop_id);
-	tb_dbg(tb, "  Max counters: %d\n", port->max_counters);
-	tb_dbg(tb, "  NFC Credits: %#x\n", port->nfc_credits);
+	       config->max_in_hop_id, config->max_out_hop_id);
+	tb_dbg(tb, "  Max counters: %d\n", config->max_counters);
+	tb_dbg(tb, "  NFC Credits: %#x\n", config->nfc_credits);
 }
 
 /**
@@ -744,7 +747,7 @@ static int tb_init_port(struct tb_port *port)
 			port->cap_adap = cap;
 	}
 
-	tb_dump_port(port->sw->tb, &port->config);
+	tb_dump_port(port);
 
 	INIT_LIST_HEAD(&port->list);
 	return 0;
