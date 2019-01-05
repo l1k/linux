@@ -845,14 +845,6 @@ static irqreturn_t nhi_msi(int irq, void *data)
 	return IRQ_HANDLED;
 }
 
-static int nhi_suspend_noirq(struct device *dev)
-{
-	struct pci_dev *pdev = to_pci_dev(dev);
-	struct tb *tb = pci_get_drvdata(pdev);
-
-	return tb_domain_suspend_noirq(tb);
-}
-
 static void nhi_enable_int_throttling(struct tb_nhi *nhi)
 {
 	/* Throttling is specified in 256ns increments */
@@ -867,6 +859,15 @@ static void nhi_enable_int_throttling(struct tb_nhi *nhi)
 		u32 reg = REG_INT_THROTTLING_RATE + i * 4;
 		iowrite32(throttle, nhi->iobase + reg);
 	}
+}
+
+#ifdef CONFIG_PM
+static int nhi_suspend_noirq(struct device *dev)
+{
+	struct pci_dev *pdev = to_pci_dev(dev);
+	struct tb *tb = pci_get_drvdata(pdev);
+
+	return tb_domain_suspend_noirq(tb);
 }
 
 static int nhi_resume_noirq(struct device *dev)
@@ -927,6 +928,7 @@ static int nhi_runtime_resume(struct device *dev)
 	nhi_enable_int_throttling(tb->nhi);
 	return tb_domain_runtime_resume(tb);
 }
+#endif /* CONFIG_PM */
 
 static void nhi_shutdown(struct tb_nhi *nhi)
 {
@@ -1095,6 +1097,7 @@ static void nhi_remove(struct pci_dev *pdev)
 	nhi_shutdown(nhi);
 }
 
+#ifdef CONFIG_PM
 /*
  * The tunneled pci bridges are siblings of us. Use resume_noirq to reenable
  * the tunnels asap. Device links block the downstream bridges' resume_noirq
@@ -1116,6 +1119,10 @@ static const struct dev_pm_ops nhi_pm_ops = {
 	.runtime_suspend = nhi_runtime_suspend,
 	.runtime_resume = nhi_runtime_resume,
 };
+#define NHI_PM_OPS &nhi_pm_ops
+#else
+#define NHI_PM_OPS NULL
+#endif /* CONFIG_PM */
 
 static struct pci_device_id nhi_ids[] = {
 	/*
@@ -1170,7 +1177,7 @@ static struct pci_driver nhi_driver = {
 	.id_table = nhi_ids,
 	.probe = nhi_probe,
 	.remove = nhi_remove,
-	.driver.pm = &nhi_pm_ops,
+	.driver.pm = NHI_PM_OPS,
 };
 
 static int __init nhi_init(void)

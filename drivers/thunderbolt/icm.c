@@ -297,10 +297,14 @@ err_free:
 	return ret;
 }
 
+#ifdef CONFIG_PM
 static void icm_fr_save_devices(struct tb *tb)
 {
 	nhi_mailbox_cmd(tb->nhi, NHI_MAILBOX_SAVE_DEVS, 0);
 }
+#else
+#define icm_fr_save_devices NULL
+#endif /* CONFIG_PM */
 
 static int
 icm_fr_driver_ready(struct tb *tb, enum tb_security_level *security_level,
@@ -1691,6 +1695,7 @@ static int icm_driver_ready(struct tb *tb)
 	return 0;
 }
 
+#ifdef CONFIG_PM
 static int icm_suspend(struct tb *tb)
 {
 	struct icm *icm = tb_priv(tb);
@@ -1808,6 +1813,13 @@ static int icm_runtime_resume(struct tb *tb)
 	icm_complete(tb);
 	return 0;
 }
+#else
+#define icm_suspend NULL
+#define icm_rescan_work NULL
+#define icm_complete NULL
+#define icm_runtime_suspend NULL
+#define icm_runtime_resume NULL
+#endif /* CONFIG_PM */
 
 static int icm_start(struct tb *tb)
 {

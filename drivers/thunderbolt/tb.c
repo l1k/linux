@@ -93,6 +93,7 @@ static void tb_free_invalid_tunnels(struct tb *tb)
 	}
 }
 
+#ifdef CONFIG_PM
 /**
  * tb_free_unplugged_children() - traverse hierarchy and free unplugged switches
  */
@@ -113,7 +114,7 @@ static void tb_free_unplugged_children(struct tb_switch *sw)
 		}
 	}
 }
-
+#endif /* CONFIG_PM */
 
 /**
  * find_pci_up_port() - return the first PCIe up port on @sw or NULL
@@ -426,6 +427,7 @@ static int tb_start(struct tb *tb)
 	return 0;
 }
 
+#ifdef CONFIG_PM
 static int tb_suspend_noirq(struct tb *tb)
 {
 	struct tb_cm *tcm = tb_priv(tb);
@@ -467,6 +469,10 @@ static int tb_resume_noirq(struct tb *tb)
 
 	return 0;
 }
+#else
+#define tb_suspend_noirq NULL
+#define tb_resume_noirq NULL
+#endif /* CONFIG_PM */
 
 static const struct tb_cm_ops tb_cm_ops = {
 	.start = tb_start,

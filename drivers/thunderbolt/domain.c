@@ -515,6 +515,7 @@ int tb_domain_suspend_noirq(struct tb *tb)
 	return ret;
 }
 
+#ifdef CONFIG_PM
 /**
  * tb_domain_resume_noirq() - Resume a domain
  * @tb: Domain to resume
@@ -567,6 +568,7 @@ int tb_domain_runtime_resume(struct tb *tb)
 	}
 	return 0;
 }
+#endif /* CONFIG_PM */
 
 /**
  * tb_domain_approve_switch() - Approve switch

@@ -1051,13 +1051,14 @@ static void stop_handshake(struct tb_xdomain *xd)
 	cancel_delayed_work_sync(&xd->properties_changed_work);
 }
 
-static int __maybe_unused tb_xdomain_suspend(struct device *dev)
+#ifdef CONFIG_PM
+static int tb_xdomain_suspend(struct device *dev)
 {
 	stop_handshake(tb_to_xdomain(dev));
 	return 0;
 }
 
-static int __maybe_unused tb_xdomain_resume(struct device *dev)
+static int tb_xdomain_resume(struct device *dev)
 {
 	struct tb_xdomain *xd = tb_to_xdomain(dev);
 
@@ -1074,11 +1075,15 @@ static int __maybe_unused tb_xdomain_resume(struct device *dev)
 static const struct dev_pm_ops tb_xdomain_pm_ops = {
 	SET_SYSTEM_SLEEP_PM_OPS(tb_xdomain_suspend, tb_xdomain_resume)
 };
+#define TB_XDOMAIN_PM_OPS &tb_xdomain_pm_ops
+#else
+#define TB_XDOMAIN_PM_OPS NULL
+#endif /* CONFIG_PM */
 
 struct device_type tb_xdomain_type = {
 	.name = "thunderbolt_xdomain",
 	.release = tb_xdomain_release,
-	.pm = &tb_xdomain_pm_ops,
+	.pm = TB_XDOMAIN_PM_OPS,
 };
 EXPORT_SYMBOL_GPL(tb_xdomain_type);
 

@@ -632,6 +632,7 @@ static void tb_dump_switch(struct tb *tb, struct tb_regs_switch_header *sw)
 	       sw->__unknown1, sw->__unknown4);
 }
 
+#ifdef CONFIG_PM
 /**
  * reset_switch() - reconfigure route, enable and send TB_CFG_PKG_RESET
  *
@@ -655,6 +656,7 @@ int tb_switch_reset(struct tb *tb, u64 route)
 		return -EIO;
 	return res.err;
 }
+#endif /* CONFIG_PM */
 
 struct tb_switch *get_switch_at_route(struct tb_switch *sw, u64 route)
 {
@@ -1087,16 +1089,17 @@ static void tb_switch_release(struct device *dev)
 	kfree(sw);
 }
 
+#ifdef CONFIG_PM
 /*
  * Currently only need to provide the callbacks. Everything else is handled
  * in the connection manager.
  */
-static int __maybe_unused tb_switch_runtime_suspend(struct device *dev)
+static int tb_switch_runtime_suspend(struct device *dev)
 {
 	return 0;
 }
 
-static int __maybe_unused tb_switch_runtime_resume(struct device *dev)
+static int tb_switch_runtime_resume(struct device *dev)
 {
 	return 0;
 }
@@ -1105,11 +1108,15 @@ static const struct dev_pm_ops tb_switch_pm_ops = {
 	SET_RUNTIME_PM_OPS(tb_switch_runtime_suspend, tb_switch_runtime_resume,
 			   NULL)
 };
+#define TB_SWITCH_PM_OPS &tb_switch_pm_ops
+#else
+#define TB_SWITCH_PM_OPS NULL
+#endif /* CONFIG_PM */
 
 struct device_type tb_switch_type = {
 	.name = "thunderbolt_device",
 	.release = tb_switch_release,
-	.pm = &tb_switch_pm_ops,
+	.pm = TB_SWITCH_PM_OPS,
 };
 
 static int tb_switch_get_generation(struct tb_switch *sw)
@@ -1537,6 +1544,7 @@ void tb_sw_set_unplugged(struct tb_switch *sw)
 	}
 }
 
+#ifdef CONFIG_PM
 int tb_switch_resume(struct tb_switch *sw)
 {
 	int i, err;
@@ -1604,6 +1612,7 @@ void tb_switch_suspend(struct tb_switch *sw)
 	 * effect?
 	 */
 }
+#endif /* CONFIG_PM */
 
 struct tb_sw_lookup {
 	struct tb *tb;
