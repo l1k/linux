@@ -248,10 +248,6 @@ void tb_pm_apple_init(struct tb *tb)
 	struct acpi_handle *nhi_handle;
 	struct tb_pm *pm;
 
-	/* no PM support for Alpine Ridge yet */
-	if (tb->root_switch->generation >= 3)
-		goto err_rpm_get;
-
 	pm = kzalloc(sizeof(*pm), GFP_KERNEL);
 	if (!pm)
 		goto err_free;
@@ -300,7 +296,6 @@ void tb_pm_apple_init(struct tb *tb)
 err_free:
 	kfree(pm);
 	dev_err(nhi_dev, "controller will stay powered up permanently\n");
-err_rpm_get:
 	pm_runtime_get_noresume(nhi_dev);
 }
 

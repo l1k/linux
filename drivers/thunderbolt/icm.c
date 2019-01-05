@@ -481,9 +481,11 @@ static void add_switch(struct tb_switch *parent_sw, u64 route,
 	sw->security_level = security_level;
 	sw->boot = boot;
 
-	vss = parse_intel_vss(ep_name, ep_name_size);
-	if (vss)
-		sw->rpm = !!(vss->flags & INTEL_VSS_FLAGS_RTD3);
+	if (!x86_apple_machine) {
+		vss = parse_intel_vss(ep_name, ep_name_size);
+		if (vss)
+			sw->rpm = !!(vss->flags & INTEL_VSS_FLAGS_RTD3);
+	}
 
 	/* Link the two switches now */
 	tb_port_at(route, parent_sw)->remote = tb_upstream_port(sw);
@@ -1839,7 +1841,7 @@ static int icm_start(struct tb *tb)
 	 * prevent root switch NVM upgrade on Macs for now.
 	 */
 	tb->root_switch->no_nvm_upgrade = x86_apple_machine;
-	tb->root_switch->rpm = icm->rpm;
+	tb->root_switch->rpm = icm->rpm || x86_apple_machine;
 
 	ret = tb_switch_add(tb->root_switch);
 	if (ret) {
