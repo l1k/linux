@@ -1515,7 +1515,8 @@ static int ks8851_probe(struct spi_device *spi)
 	unsigned cider;
 	int gpio;
 
-	ndev = alloc_etherdev(sizeof(struct ks8851_net));
+	ndev = alloc_netdev(sizeof(struct ks8851_net), "pieth%d",
+			    NET_NAME_UNKNOWN, ether_setup);
 	if (!ndev)
 		return -ENOMEM;
 
