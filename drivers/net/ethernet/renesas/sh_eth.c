@@ -3137,7 +3137,7 @@ static struct sh_eth_plat_data *sh_eth_parse_dt(struct device *dev)
 	pdata->phy_interface = of_get_phy_mode(np);
 
 	mac_addr = of_get_mac_address(np);
-	if (mac_addr)
+	if (!IS_ERR(mac_addr))
 		memcpy(pdata->mac_addr, mac_addr, ETH_ALEN);
 
 	pdata->no_ether_link =

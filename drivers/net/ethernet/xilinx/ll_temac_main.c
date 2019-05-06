@@ -1077,7 +1077,7 @@ static int temac_of_probe(struct platform_device *op)
 
 	/* Retrieve the MAC address */
 	addr = of_get_mac_address(op->dev.of_node);
-	if (!addr) {
+	if (IS_ERR_OR_NULL(addr)) {
 		dev_err(&op->dev, "could not find MAC address\n");
 		rc = -ENODEV;
 		goto err_iounmap_2;
