@@ -1039,8 +1039,10 @@ int serial8250_register_8250_port(struct uart_8250_port *up)
 		if (!has_acpi_companion(uart->port.dev)) {
 			gpios = mctrl_gpio_init(&uart->port, 0);
 			if (IS_ERR(gpios)) {
-				if (PTR_ERR(gpios) != -ENOSYS)
-					return PTR_ERR(gpios);
+				if (PTR_ERR(gpios) != -ENOSYS) {
+					ret = PTR_ERR(gpios);
+					goto out_unlock;
+				}
 			} else {
 				uart->gpios = gpios;
 			}
@@ -1112,6 +1114,7 @@ int serial8250_register_8250_port(struct uart_8250_port *up)
 		}
 	}
 
+out_unlock:
 	mutex_unlock(&serial_mutex);
 
 	return ret;
