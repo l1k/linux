@@ -53,6 +53,12 @@ struct bcm2835_dma_cfg_data {
 	u32	chan_40bit_mask;
 };
 
+/**
+ * struct bcm2835_dmadev - BCM2835 DMA controller
+ * @ddev: DMA device
+ * @base: base address of register map
+ * @dma_parms: DMA parameters (to convey 1 GByte max segment size to clients)
+ */
 struct bcm2835_dmadev {
 	struct dma_device ddev;
 	void __iomem *base;
