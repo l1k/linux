@@ -1322,6 +1322,7 @@ static int32_t dwc_otg_handle_lpm_intr(dwc_otg_core_if_t * core_if)
  */
 static inline uint32_t dwc_otg_read_common_intr(dwc_otg_core_if_t * core_if, gintmsk_data_t *reenable_gintmsk, dwc_otg_hcd_t *hcd)
 {
+	unsigned long flags;
 	gahbcfg_data_t gahbcfg = {.d32 = 0 };
 	gintsts_data_t gintsts;
 	gintmsk_data_t gintmsk;
@@ -1345,8 +1346,7 @@ static inline uint32_t dwc_otg_read_common_intr(dwc_otg_core_if_t * core_if, gin
 		gintmsk_common.b.portintr = 1;
 	}
 	if(fiq_enable) {
-		local_fiq_disable();
-		fiq_fsm_spin_lock(&hcd->fiq_state->lock);
+		fiq_fsm_spin_lock_irqsave(&hcd->fiq_state->lock, flags);
 		gintsts.d32 = DWC_READ_REG32(&core_if->core_global_regs->gintsts);
 		gintmsk.d32 = DWC_READ_REG32(&core_if->core_global_regs->gintmsk);
 		/* Pull in the interrupts that the FIQ has masked */
@@ -1354,8 +1354,7 @@ static inline uint32_t dwc_otg_read_common_intr(dwc_otg_core_if_t * core_if, gin
 		gintmsk.d32 |= gintmsk_common.d32;
 		/* for the upstairs function to reenable - have to read it here in case FIQ triggers again */
 		reenable_gintmsk->d32 = gintmsk.d32;
-		fiq_fsm_spin_unlock(&hcd->fiq_state->lock);
-		local_fiq_enable();
+		fiq_fsm_spin_unlock_irqrestore(&hcd->fiq_state->lock, flags);
 	} else {
 		gintsts.d32 = DWC_READ_REG32(&core_if->core_global_regs->gintsts);
 		gintmsk.d32 = DWC_READ_REG32(&core_if->core_global_regs->gintmsk);
