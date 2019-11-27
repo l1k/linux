@@ -1162,6 +1162,8 @@ static int omap8250_probe(struct platform_device *pdev)
 	up.port.throttle = omap_8250_throttle;
 	up.port.unthrottle = omap_8250_unthrottle;
 	up.port.rs485_config = serial8250_em485_config;
+	up.rs485_start_tx = serial8250_em485_start_tx;
+	up.rs485_stop_tx = serial8250_em485_stop_tx;
 
 	if (pdev->dev.of_node) {
 		const struct of_device_id *id;
