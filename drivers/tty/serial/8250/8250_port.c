@@ -686,8 +686,8 @@ int serial8250_em485_config(struct uart_port *port, struct serial_rs485 *rs485)
 	port->rs485 = *rs485;
 
 	if (port->rs485_term_gpio)
-		gpiod_set_value(port->rs485_term_gpio,
-				rs485->flags & SER_RS485_TERMINATE_BUS);
+		gpiod_set_value_cansleep_rt(port->rs485_term_gpio,
+			  rs485->flags & SER_RS485_TERMINATE_BUS);
 
 	/*
 	 * Both serial8250_em485_init() and serial8250_em485_destroy()
