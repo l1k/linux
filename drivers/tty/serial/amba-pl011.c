@@ -2215,8 +2215,7 @@ pl011_set_termios(struct uart_port *port, struct ktermios *termios,
 		if (termios->c_cflag & CMSPAR)
 			lcr_h |= UART011_LCRH_SPS;
 	}
-	if (uap->fifosize > 1)
-		lcr_h |= UART01x_LCRH_FEN;
+	lcr_h |= UART01x_LCRH_FEN;
 
 	spin_lock_irqsave(&port->lock, flags);
 
