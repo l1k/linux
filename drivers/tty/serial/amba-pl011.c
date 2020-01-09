@@ -1495,8 +1495,7 @@ static unsigned int pl011_tx_empty(struct uart_port *port)
 	/* Allow feature register bits to be inverted to work around errata */
 	unsigned int status = pl011_read(uap, REG_FR) ^ uap->vendor->inv_fr;
 
-	return status & (uap->vendor->fr_busy | UART01x_FR_TXFF) ?
-							0 : TIOCSER_TEMT;
+	return status & uap->vendor->fr_busy ? 0 : TIOCSER_TEMT;
 }
 
 static int pl011_rs485_tx_start(struct uart_amba_port *uap)
@@ -2512,8 +2511,7 @@ pl011_console_write(struct console *co, const char *s, unsigned int count)
 	 *	TCR. Allow feature register bits to be inverted to work around
 	 *	errata.
 	 */
-	while ((pl011_read(uap, REG_FR) ^ uap->vendor->inv_fr)
-						& uap->vendor->fr_busy)
+	while (!pl011_tx_empty(&uap->port))
 		cpu_relax();
 
 	if (!uap->vendor->always_enabled) {
