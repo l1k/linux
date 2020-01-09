@@ -2465,6 +2465,7 @@ static void
 pl011_console_write(struct console *co, const char *s, unsigned int count)
 {
 	struct uart_amba_port *uap = amba_ports[co->index];
+	bool rs485_enabled = uap->port.rs485.flags & SER_RS485_ENABLED;
 	unsigned int old_cr = 0, new_cr;
 	unsigned long flags = 0;
 	int locked = 1;
@@ -2492,7 +2493,17 @@ pl011_console_write(struct console *co, const char *s, unsigned int count)
 		old_cr = pl011_read(uap, REG_CR);
 		new_cr = old_cr & ~UART011_CR_CTSEN;
 		new_cr |= UART01x_CR_UARTEN | UART011_CR_TXE;
+		if (rs485_enabled) {
+			if (uap->port.rs485.flags & SER_RS485_RTS_ON_SEND)
+				new_cr &= ~UART011_CR_RTS;
+			else
+				new_cr |= UART011_CR_RTS;
+		}
+
 		pl011_write(new_cr, uap, REG_CR);
+
+		if (rs485_enabled)
+			mdelay(uap->port.rs485.delay_rts_before_send);
 	}
 
 	uart_console_write(&uap->port, s, count, pl011_console_putchar);
@@ -2505,8 +2516,13 @@ pl011_console_write(struct console *co, const char *s, unsigned int count)
 	while ((pl011_read(uap, REG_FR) ^ uap->vendor->inv_fr)
 						& uap->vendor->fr_busy)
 		cpu_relax();
-	if (!uap->vendor->always_enabled)
+
+	if (!uap->vendor->always_enabled) {
+		if (rs485_enabled)
+			mdelay(uap->port.rs485.delay_rts_after_send);
+
 		pl011_write(old_cr, uap, REG_CR);
+	}
 
 	if (locked)
 		spin_unlock_irqrestore(&uap->port.lock, flags);
