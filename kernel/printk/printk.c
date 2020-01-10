@@ -3456,8 +3456,7 @@ void register_console(struct console *newcon)
 	 * the real console are the same physical device, it's annoying to
 	 * see the beginning boot messages twice
 	 */
-	if (bootcon_enabled &&
-	    ((newcon->flags & (CON_CONSDEV | CON_BOOT)) == CON_CONSDEV)) {
+	if (bootcon_enabled && !(newcon->flags & CON_BOOT)) {
 		newcon->flags &= ~CON_PRINTBUFFER;
 	}
 
@@ -3514,7 +3513,7 @@ void register_console(struct console *newcon)
 		(newcon->flags & CON_BOOT) ? "boot" : "" ,
 		newcon->name, newcon->index);
 	if (bootcon_enabled &&
-	    ((newcon->flags & (CON_CONSDEV | CON_BOOT)) == CON_CONSDEV) &&
+	    !(newcon->flags & CON_BOOT) &&
 	    !keep_bootcon) {
 		/* We need to iterate through all boot consoles, to make
 		 * sure we print everything out, before we unregister them.
