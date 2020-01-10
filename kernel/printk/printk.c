@@ -3423,10 +3423,8 @@ void register_console(struct console *newcon)
 	 * the real console are the same physical device, it's annoying to
 	 * see the beginning boot messages twice
 	 */
-	if (bootcon_registered &&
-	    ((newcon->flags & (CON_CONSDEV | CON_BOOT)) == CON_CONSDEV)) {
+	if (bootcon_registered && !(newcon->flags & CON_BOOT))
 		newcon->flags &= ~CON_PRINTBUFFER;
-	}
 
 	newcon->dropped = 0;
 	console_init_seq(newcon, bootcon_registered);
@@ -3465,8 +3463,7 @@ void register_console(struct console *newcon)
 	 * went to the bootconsole (that they do not see on the real console)
 	 */
 	con_printk(KERN_INFO, newcon, "enabled\n");
-	if (bootcon_registered &&
-	    ((newcon->flags & (CON_CONSDEV | CON_BOOT)) == CON_CONSDEV) &&
+	if (bootcon_registered && !(newcon->flags & CON_BOOT) &&
 	    !keep_bootcon) {
 		struct hlist_node *tmp;
 
