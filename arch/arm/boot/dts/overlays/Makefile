@@ -176,6 +176,7 @@ dtbo-$(CONFIG_ARCH_BCM2835) += \
 	revpi-flat-dt-blob.dtbo \
 	revpi-core.dtbo \
 	revpi-core-dt-blob.dtbo \
+	cmio-jtag-dt-blob.dtbo \
 	rotary-encoder.dtbo \
 	rpi-backlight.dtbo \
 	rpi-cirrus-wm5102.dtbo \
