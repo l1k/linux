@@ -1,6 +1,7 @@
 # SPDX-License-Identifier: GPL-2.0
 
 hostprogs-y	:= genksyms
+crossprogs-y	:= genksyms
 always		:= $(hostprogs-y)
 
 genksyms-objs	:= genksyms.o parse.tab.o lex.lex.o

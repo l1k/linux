@@ -730,6 +730,20 @@ Both possibilities are described in the following.
 	like hostprogs-y. But only hostprogs-y is recommended to be used
 	when no CONFIG symbols are involved.
 
+4.6 Host programs necessary to build external modules
+-----------------------------------------------------
+
+	If a host program is necessary to build external modules,
+	it shall be added to crossprogs-y in addition to hostprogs-y.
+
+	Example:
+		hostprogs-y   := fixdep
+		crossprogs-y  := fixdep
+
+	This ensures that the host program is cross-compiled for the
+	target architecture when installing a module build environment
+	with "make kbuild_install".
+
 === 5 Kbuild clean infrastructure
 
 "make clean" deletes most generated files in the obj tree where the kernel

@@ -52,6 +52,12 @@ __clean-files   := $(wildcard                                               \
 		   $(addprefix $(obj)/, $(filter-out $(objtree)/%, $(__clean-files))) \
 		   $(filter $(objtree)/%, $(__clean-files)))
 
+# amend the list of directories to remove
+
+ifneq ($(crossprogs-y)$(crossprogs-),)
+        clean-dirs += .cross
+endif
+
 # same as clean-files
 
 __clean-dirs    := $(wildcard                                               \
