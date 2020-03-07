@@ -59,6 +59,13 @@ ifneq ($(userprogs),)
 include scripts/Makefile.userprogs
 endif
 
+# Do not include kbuild install rules unless needed.
+ifneq ($(KBUILD_INSTALL),)
+ifneq ($(extmodprogs),)
+include scripts/Makefile.kbuildinst
+endif
+endif
+
 ifndef obj
 $(warning kbuild: Makefile.build is included improperly)
 endif

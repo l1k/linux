@@ -1,0 +1,81 @@
+# SPDX-License-Identifier: GPL-2.0
+
+# only install extmodprogs whose hostprogs counterpart is enabled
+extmodprogs := $(sort $(filter $(extmodprogs),$(notdir $(always-y) $(always-m))))
+
+ifneq ($(extmodprogs),)
+
+extmodprogs-install := $(addprefix $(INSTALL_KBUILD_PATH)/$(obj)/, $(extmodprogs))
+
+ifneq ($(CROSS_COMPILE),)
+
+# ==========================================================================
+# Cross-build binaries necessary to build modules on the target
+
+# C executables compiled from a single .c file
+cross-csingle	:= $(foreach m,$(extmodprogs),$(if $($(m)-objs),,$(m)))
+
+# C executables linked from several .o files
+cross-cmulti	:= $(foreach m,$(extmodprogs),$(if $($(m)-objs),$(m)))
+
+# Object .o files compiled from .c files
+cross-cobjs	:= $(sort $(foreach m,$(cross-cmulti),$($(m)-objs)))
+
+cross-csingle	:= $(addprefix $(obj)/.cross/,$(cross-csingle))
+cross-cmulti	:= $(addprefix $(obj)/.cross/,$(cross-cmulti))
+cross-cobjs	:= $(addprefix $(obj)/.cross/,$(cross-cobjs))
+
+# Create executable from a single .c file
+# cross-csingle -> executable
+quiet_cmd_cross-csingle = CC      $@
+      cmd_cross-csingle = $(CC) $(hostc_flags) $(KBUILD_HOSTLDFLAGS) -o $@ $< \
+			  $(KBUILD_HOSTLDLIBS) $(HOSTLDLIBS_$(target-stem))
+$(cross-csingle): $(obj)/.cross/%: $(src)/%.c FORCE
+	$(call if_changed_dep,cross-csingle)
+
+# Link executable based on list of .o files, all plain C
+# cross-cmulti -> executable
+quiet_cmd_cross-cmulti	= LD      $@
+      cmd_cross-cmulti	= $(CC) $(KBUILD_HOSTLDFLAGS) -o $@ \
+			  $(addprefix $(obj)/.cross/, $($(target-stem)-objs)) \
+			  $(KBUILD_HOSTLDLIBS) $(HOSTLDLIBS_$(target-stem))
+$(cross-cmulti): FORCE
+	$(call if_changed,cross-cmulti)
+$(call multi_depend, $(cross-cmulti), , -objs)
+
+# Create .o file from a single .c file
+# cross-cobjs -> .o
+#
+# Some host-cobjs have special prerequisites.  Apply them to cross-cobjs
+# by letting the cross .o file depend on the host .o file.
+quiet_cmd_cross-cobjs	= CC      $@
+      cmd_cross-cobjs	= $(CC) $(hostc_flags) -c -o $@ $<
+$(cross-cobjs): $(obj)/.cross/%.o: $(src)/%.c $(obj)/%.o FORCE
+	$(call if_changed_dep,cross-cobjs)
+
+# ==========================================================================
+# Install module build environment to $(INSTALL_KBUILD_PATH)
+#
+# When cross-compiling, install cross-compiled versions of the hostprogs.
+# Else install the hostprogs directly.
+
+targets  += $(cross-csingle) $(cross-cmulti) $(cross-cobjs)
+always-y += $(cross-csingle) $(cross-cmulti) $(cross-cobjs)
+
+$(extmodprogs-install): $(INSTALL_KBUILD_PATH)/$(obj)/%: $(obj)/.cross/%
+	$(call cmd,extmodprogs_install,$(dir $@))
+
+else  # !CROSS_COMPILE
+
+$(extmodprogs-install): $(INSTALL_KBUILD_PATH)/$(obj)/%: $(obj)/%
+	$(call cmd,extmodprogs_install,$(dir $@))
+
+endif # !CROSS_COMPILE
+
+quiet_cmd_extmodprogs_install = INSTALL $<
+      cmd_extmodprogs_install = mkdir -p $(2); cp $< $(2)
+
+targets  += $(extmodprogs-install)
+always-y += $(extmodprogs-install)
+
+endif # extmodprogs

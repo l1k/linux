@@ -2,6 +2,7 @@
 OBJECT_FILES_NON_STANDARD := y
 
 hostprogs-always-y	+= modpost mk_elfconfig
+extmodprogs		+= modpost
 always-y		+= empty.o
 
 modpost-objs	:= modpost.o file2alias.o sumversion.o

@@ -756,6 +756,20 @@ Both possibilities are described in the following.
 	This will tell kbuild to build lxdialog even if not referenced in
 	any rule.
 
+4.6 Host programs necessary to build external modules
+-----------------------------------------------------
+
+	If a host program is necessary to build external modules,
+	it shall be added to extmodprogs in addition to hostprogs.
+
+	Example:
+		hostprogs     := fixdep
+		extmodprogs   := fixdep
+
+	This ensures that the host program is installed to a module build
+	environment with "make kbuild_install". It will be cross-compiled
+	for the target architecture if necessary.
+
 5 Userspace Program support
 ===========================
 

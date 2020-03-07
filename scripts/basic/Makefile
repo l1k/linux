@@ -3,3 +3,4 @@
 # fixdep: used to generate dependency information during build process
 
 hostprogs-always-y	+= fixdep
+extmodprogs		+= fixdep

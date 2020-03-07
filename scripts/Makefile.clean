@@ -37,6 +37,10 @@ __clean-files	:= \
 # deprecated
 __clean-files	+= $(always) $(hostprogs-y) $(hostprogs-m) $(hostprogs-)
 
+ifneq ($(extmodprogs),)
+__clean-files	+= .cross
+endif
+
 __clean-files   := $(filter-out $(no-clean-files), $(__clean-files))
 
 # clean-files is given relative to the current directory, unless it
