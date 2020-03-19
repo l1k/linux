@@ -3290,9 +3290,26 @@ void uart_sanitize_rs485_mode(struct uart_port *port)
 		rs485->flags &= ~SER_RS485_RTS_AFTER_SEND;
 	}
 
-	/* clamp the delays to [0, 100ms] */
-	rs485->delay_rts_before_send = min(rs485->delay_rts_before_send, 100U);
-	rs485->delay_rts_after_send  = min(rs485->delay_rts_after_send, 100U);
+	/* clamp the delays to [0, 20us] */
+	rs485->delay_rts_before_send = min(rs485->delay_rts_before_send, 20000U);
+	rs485->delay_rts_after_send  = min(rs485->delay_rts_after_send, 20000U);
+
+	/*
+	 * We originally used millisecond delays, even though transceivers
+	 * just need a few nano- or microseconds.  That left 0 and 1 as the
+	 * only sensible values.  We've since migrated to nanosecond delays.
+	 * Interpret a delay of 1 as a legacy millisecond value and convert
+	 * it to 10 usec.  Inform users so that they update their apps and
+	 * device trees.
+	 */
+	if (rs485->delay_rts_before_send == 1) {
+		dev_info(dev, "assuming 10 usec for rs485 delay before send\n");
+		rs485->delay_rts_before_send = 10000;
+	}
+	if (rs485->delay_rts_after_send == 1) {
+		dev_info(dev, "assuming 10 usec for rs485 delay after send\n");
+		rs485->delay_rts_after_send = 10000;
+	}
 
 	memset(rs485->padding, 0, sizeof(rs485->padding));
 }

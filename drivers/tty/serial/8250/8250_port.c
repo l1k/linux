@@ -563,9 +563,6 @@ static void serial8250_clear_fifos(struct uart_8250_port *p)
 	}
 }
 
-static enum hrtimer_restart serial8250_em485_handle_start_tx(struct hrtimer *t);
-static enum hrtimer_restart serial8250_em485_handle_stop_tx(struct hrtimer *t);
-
 void serial8250_clear_and_reinit_fifos(struct uart_8250_port *p)
 {
 	serial8250_clear_fifos(p);
@@ -619,14 +616,6 @@ static int serial8250_em485_init(struct uart_8250_port *p)
 	if (!p->em485)
 		return -ENOMEM;
 
-	hrtimer_init(&p->em485->stop_tx_timer, CLOCK_MONOTONIC,
-		     HRTIMER_MODE_REL);
-	hrtimer_init(&p->em485->start_tx_timer, CLOCK_MONOTONIC,
-		     HRTIMER_MODE_REL);
-	p->em485->stop_tx_timer.function = &serial8250_em485_handle_stop_tx;
-	p->em485->start_tx_timer.function = &serial8250_em485_handle_start_tx;
-	p->em485->port = p;
-	p->em485->active_timer = NULL;
 	p->em485->tx_stopped = true;
 
 	p->rs485_stop_tx(p);
@@ -651,9 +640,6 @@ void serial8250_em485_destroy(struct uart_8250_port *p)
 {
 	if (!p->em485)
 		return;
-
-	hrtimer_cancel(&p->em485->start_tx_timer);
-	hrtimer_cancel(&p->em485->stop_tx_timer);
 
 	kfree(p->em485);
 	p->em485 = NULL;
@@ -1461,48 +1447,19 @@ void serial8250_em485_stop_tx(struct uart_8250_port *p)
 }
 EXPORT_SYMBOL_GPL(serial8250_em485_stop_tx);
 
-static enum hrtimer_restart serial8250_em485_handle_stop_tx(struct hrtimer *t)
-{
-	struct uart_8250_em485 *em485 = container_of(t, struct uart_8250_em485,
-			stop_tx_timer);
-	struct uart_8250_port *p = em485->port;
-	unsigned long flags;
-
-	serial8250_rpm_get(p);
-	spin_lock_irqsave(&p->port.lock, flags);
-	if (em485->active_timer == &em485->stop_tx_timer) {
-		p->rs485_stop_tx(p);
-		em485->active_timer = NULL;
-		em485->tx_stopped = true;
-	}
-	spin_unlock_irqrestore(&p->port.lock, flags);
-	serial8250_rpm_put(p);
-
-	return HRTIMER_NORESTART;
-}
-
-static void start_hrtimer_ms(struct hrtimer *hrt, unsigned long msec)
-{
-	hrtimer_start(hrt, ms_to_ktime(msec), HRTIMER_MODE_REL);
-}
-
 static void __stop_tx_rs485(struct uart_8250_port *p)
 {
 	struct uart_8250_em485 *em485 = p->em485;
+
+	if (p->port.rs485.delay_rts_after_send)
+		ndelay(p->port.rs485.delay_rts_after_send);
 
 	/*
 	 * rs485_stop_tx() is going to set RTS according to config
 	 * AND flush RX FIFO if required.
 	 */
-	if (p->port.rs485.delay_rts_after_send > 0) {
-		em485->active_timer = &em485->stop_tx_timer;
-		start_hrtimer_ms(&em485->stop_tx_timer,
-				   p->port.rs485.delay_rts_after_send);
-	} else {
-		p->rs485_stop_tx(p);
-		em485->active_timer = NULL;
-		em485->tx_stopped = true;
-	}
+	p->rs485_stop_tx(p);
+	em485->tx_stopped = true;
 }
 
 static inline void __do_stop_tx(struct uart_8250_port *p)
@@ -1605,39 +1562,13 @@ static inline void start_tx_rs485(struct uart_port *port)
 	struct uart_8250_port *up = up_to_u8250p(port);
 	struct uart_8250_em485 *em485 = up->em485;
 
-	em485->active_timer = NULL;
-
 	if (em485->tx_stopped) {
 		em485->tx_stopped = false;
-
 		up->rs485_start_tx(up);
 
-		if (up->port.rs485.delay_rts_before_send > 0) {
-			em485->active_timer = &em485->start_tx_timer;
-			start_hrtimer_ms(&em485->start_tx_timer,
-					 up->port.rs485.delay_rts_before_send);
-			return;
-		}
+		if (up->port.rs485.delay_rts_before_send)
+			ndelay(up->port.rs485.delay_rts_before_send);
 	}
-
-	__start_tx(port);
-}
-
-static enum hrtimer_restart serial8250_em485_handle_start_tx(struct hrtimer *t)
-{
-	struct uart_8250_em485 *em485 = container_of(t, struct uart_8250_em485,
-			start_tx_timer);
-	struct uart_8250_port *p = em485->port;
-	unsigned long flags;
-
-	spin_lock_irqsave(&p->port.lock, flags);
-	if (em485->active_timer == &em485->start_tx_timer) {
-		__start_tx(&p->port);
-		em485->active_timer = NULL;
-	}
-	spin_unlock_irqrestore(&p->port.lock, flags);
-
-	return HRTIMER_NORESTART;
 }
 
 static void serial8250_start_tx(struct uart_port *port)
@@ -1647,14 +1578,10 @@ static void serial8250_start_tx(struct uart_port *port)
 
 	serial8250_rpm_get_tx(up);
 
-	if (em485 &&
-	    em485->active_timer == &em485->start_tx_timer)
-		return;
-
 	if (em485)
 		start_tx_rs485(port);
-	else
-		__start_tx(port);
+
+	__start_tx(port);
 }
 
 static void serial8250_throttle(struct uart_port *port)
@@ -3359,7 +3286,8 @@ void serial8250_console_write(struct uart_8250_port *up, const char *s,
 	if (em485) {
 		if (em485->tx_stopped)
 			up->rs485_start_tx(up);
-		mdelay(port->rs485.delay_rts_before_send);
+		if (port->rs485.delay_rts_before_send)
+			ndelay(port->rs485.delay_rts_before_send);
 	}
 
 	uart_console_write(port, s, count, serial8250_console_putchar);
@@ -3371,7 +3299,9 @@ void serial8250_console_write(struct uart_8250_port *up, const char *s,
 	wait_for_xmitr(up, BOTH_EMPTY);
 
 	if (em485) {
-		mdelay(port->rs485.delay_rts_after_send);
+		if (port->rs485.delay_rts_after_send)
+			ndelay(port->rs485.delay_rts_after_send);
+
 		if (em485->tx_stopped)
 			up->rs485_stop_tx(up);
 	}

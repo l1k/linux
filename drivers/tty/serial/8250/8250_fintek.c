@@ -191,6 +191,33 @@ static int fintek_8250_get_ldn_range(struct fintek_8250 *pdata, int *min,
 	return -ENODEV;
 }
 
+/**
+ * uart_get_char_time() - calculate time to transmit one character (in nsec)
+ * @port: uart port
+ */
+static unsigned int uart_get_char_time(struct uart_port *port)
+{
+	struct tty_port *tport = &port->state->port;
+	struct tty_struct *tty;
+	unsigned int char_time;
+
+	tty = tty_port_tty_get(tport);
+	if (!tty)
+		return 0;
+
+	down_read(&tty->termios_rwsem);
+
+	if (port->uartclk)
+		char_time = NSEC_PER_SEC / port->uartclk *
+			    tty_get_frame_size(tty->termios.c_cflag);
+	else
+		char_time = 0;
+
+	up_read(&tty->termios_rwsem);
+	tty_kref_put(tty);
+	return char_time;
+}
+
 static int fintek_8250_rs485_config(struct uart_port *port,
 			      struct serial_rs485 *rs485)
 {
@@ -222,12 +249,12 @@ static int fintek_8250_rs485_config(struct uart_port *port,
 	}
 
 	if (rs485->delay_rts_before_send) {
-		rs485->delay_rts_before_send = 1;
+		rs485->delay_rts_before_send = 4 * uart_get_char_time(port);
 		config |= TXW4C_IRA;
 	}
 
 	if (rs485->delay_rts_after_send) {
-		rs485->delay_rts_after_send = 1;
+		rs485->delay_rts_after_send = 4 * uart_get_char_time(port);
 		config |= RXW4C_IRA;
 	}
 

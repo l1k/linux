@@ -112,6 +112,9 @@ struct serial_icounter_struct {
  * support. Set with TIOCSRS485 and get with TIOCGRS485 if supported by your
  * platform. The set function returns the new state, with any unsupported bits
  * reverted appropriately.
+ *
+ * Driver enable delay between RTS assert and send
+ * Driver propagation delay between send and RTS deassert
  */
 
 struct serial_rs485 {
@@ -126,8 +129,8 @@ struct serial_rs485 {
 #define SER_RS485_TERMINATE_BUS		(1 << 5)	/* Enable bus
 							   termination
 							   (if supported) */
-	__u32	delay_rts_before_send;	/* Delay before send (milliseconds) */
-	__u32	delay_rts_after_send;	/* Delay after send (milliseconds) */
+	__u32	delay_rts_before_send;	/* Delay before send (nanoseconds) */
+	__u32	delay_rts_after_send;	/* Delay after send (nanoseconds) */
 	__u32	padding[5];		/* Memory is cheap, new structs
 					   are a royal PITA .. */
 };

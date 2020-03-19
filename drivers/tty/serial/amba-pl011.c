@@ -1272,7 +1272,7 @@ static void pl011_rs485_tx_stop(struct uart_amba_port *uap)
 	}
 
 	if (port->rs485.delay_rts_after_send)
-		mdelay(port->rs485.delay_rts_after_send);
+		ndelay(port->rs485.delay_rts_after_send);
 
 	cr = pl011_read(uap, REG_CR);
 
@@ -1411,7 +1411,7 @@ static void pl011_rs485_tx_start(struct uart_amba_port *uap)
 	pl011_write(cr, uap, REG_CR);
 
 	if (port->rs485.delay_rts_before_send)
-		mdelay(port->rs485.delay_rts_before_send);
+		ndelay(port->rs485.delay_rts_before_send);
 
 	uap->rs485_tx_started = true;
 }

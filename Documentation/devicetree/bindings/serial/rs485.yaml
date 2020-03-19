@@ -19,15 +19,19 @@ properties:
     $ref: /schemas/types.yaml#/definitions/uint32-array
     items:
       items:
-        - description: Delay between rts signal and beginning of data sent in
-            milliseconds. It corresponds to the delay before sending data.
+        - description: "Driver Enable to Output Delay" in nanoseconds as given
+            in the transceiver datasheet. Specifies the delay between enabling
+            the driver (assertion of RTS) and transmission of the start bit.
+            For most transceivers it's so short that it can safely be omitted.
           default: 0
-          maximum: 1000
-        - description: Delay between end of data sent and rts signal in milliseconds.
-            It corresponds to the delay after sending data and actual release
-            of the line.
+          maximum: 20000
+        - description: "Driver Propagation Delay" in nanoseconds as given in
+            the transceiver datasheet. Specifies the delay between transmission
+            of the stop bit and disabling the driver (deassertion of RTS).
+            The delay allows the stop bit to transition through the transceiver
+            before its driver is disabled.
           default: 0
-          maximum: 1000
+          maximum: 20000
 
   rs485-rts-active-low:
     description: drive RTS low when sending (default is high).
