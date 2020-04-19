@@ -54,6 +54,19 @@ static void ks8851_unlock(struct ks8851_net *ks, unsigned long *flags)
 }
 
 /**
+ * ks8851_rdreg8 - read 8 bit register from device
+ * @ks: The chip information
+ * @reg: The register address
+ *
+ * Read a 8bit register from the chip, returning the result
+ */
+static unsigned int ks8851_rdreg8(struct ks8851_net *ks,
+				  unsigned int reg)
+{
+	return ks->rdreg8(ks, reg);
+}
+
+/**
  * ks8851_wrreg16 - write 16bit register value to chip
  * @ks: The chip state
  * @reg: The register address
@@ -78,6 +91,19 @@ static unsigned int ks8851_rdreg16(struct ks8851_net *ks,
 				   unsigned int reg)
 {
 	return ks->rdreg16(ks, reg);
+}
+
+/**
+ * ks8851_rdreg32 - read 32 bit register from device
+ * @ks: The chip information
+ * @reg: The register address
+ *
+ * Read a 32bit register from the chip, returning the result
+ */
+static unsigned int ks8851_rdreg32(struct ks8851_net *ks,
+				   unsigned int reg)
+{
+	return ks->rdreg32(ks, reg);
 }
 
 /**
@@ -257,9 +283,10 @@ static void ks8851_rx_pkts(struct ks8851_net *ks)
 	unsigned rxfc;
 	unsigned rxlen;
 	unsigned rxstat;
+	u32 rxh;
 	u8 *rxpkt;
 
-	rxfc = (ks8851_rdreg16(ks, KS_RXFCTR) >> 8) & 0xff;
+	rxfc = ks8851_rdreg8(ks, KS_RXFC);
 
 	netif_dbg(ks, rx_status, ks->netdev,
 		  "%s: %d packets\n", __func__, rxfc);
@@ -275,8 +302,9 @@ static void ks8851_rx_pkts(struct ks8851_net *ks)
 	 */
 
 	for (; rxfc != 0; rxfc--) {
-		rxstat = ks8851_rdreg16(ks, KS_RXFHSR);
-		rxlen = ks8851_rdreg16(ks, KS_RXFHBCR) & RXFHBCR_CNT_MASK;
+		rxh = ks8851_rdreg32(ks, KS_RXFHSR);
+		rxstat = rxh & 0xffff;
+		rxlen = (rxh >> 16) & 0xfff;
 
 		netif_dbg(ks, rx_status, ks->netdev,
 			  "rx: stat 0x%04x, len 0x%04x\n", rxstat, rxlen);

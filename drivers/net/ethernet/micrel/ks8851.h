@@ -399,10 +399,14 @@ struct ks8851_net {
 					unsigned long *flags);
 	void			(*unlock)(struct ks8851_net *ks,
 					  unsigned long *flags);
+	unsigned int		(*rdreg8)(struct ks8851_net *ks,
+					  unsigned int reg);
 	unsigned int		(*rdreg16)(struct ks8851_net *ks,
 					   unsigned int reg);
 	void			(*wrreg16)(struct ks8851_net *ks,
 					   unsigned int reg, unsigned int val);
+	unsigned int		(*rdreg32)(struct ks8851_net *ks,
+					   unsigned int reg);
 	void			(*rdfifo)(struct ks8851_net *ks, u8 *buff,
 					  unsigned int len);
 	void			(*wrfifo)(struct ks8851_net *ks,

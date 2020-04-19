@@ -185,6 +185,21 @@ static void ks8851_rdreg(struct ks8851_net *ks, unsigned int op,
 }
 
 /**
+ * ks8851_rdreg8_spi - read 8 bit register from device
+ * @ks: The chip information
+ * @reg: The register address
+ *
+ * Read a 8bit register from the chip, returning the result
+*/
+static unsigned int ks8851_rdreg8_spi(struct ks8851_net *ks, unsigned reg)
+{
+	u8 rxb[1];
+
+	ks8851_rdreg(ks, MK_OP(1 << (reg & 3), reg), rxb, 1);
+	return rxb[0];
+}
+
+/**
  * ks8851_rdreg16_spi - read 16 bit register from device via SPI
  * @ks: The chip information
  * @reg: The register address
@@ -197,6 +212,25 @@ static unsigned int ks8851_rdreg16_spi(struct ks8851_net *ks, unsigned int reg)
 
 	ks8851_rdreg(ks, MK_OP(reg & 2 ? 0xC : 0x3, reg), (u8 *)&rx, 2);
 	return le16_to_cpu(rx);
+}
+
+/**
+ * ks8851_rdreg32_spi - read 32 bit register from device
+ * @ks: The chip information
+ * @reg: The register address
+ *
+ * Read a 32bit register from the chip.
+ *
+ * Note, this read requires the address be aligned to 4 bytes.
+*/
+static unsigned ks8851_rdreg32_spi(struct ks8851_net *ks, unsigned reg)
+{
+	__le32 rx = 0;
+
+	WARN_ON(reg & 3);
+
+	ks8851_rdreg(ks, MK_OP(0xf, reg), (u8 *)&rx, 4);
+	return le32_to_cpu(rx);
 }
 
 /**
@@ -414,8 +448,10 @@ static int ks8851_probe_spi(struct spi_device *spi)
 
 	ks->lock = ks8851_lock_spi;
 	ks->unlock = ks8851_unlock_spi;
+	ks->rdreg8 = ks8851_rdreg8_spi;
 	ks->rdreg16 = ks8851_rdreg16_spi;
 	ks->wrreg16 = ks8851_wrreg16_spi;
+	ks->rdreg32 = ks8851_rdreg32_spi;
 	ks->rdfifo = ks8851_rdfifo_spi;
 	ks->wrfifo = ks8851_wrfifo_spi;
 	ks->start_xmit = ks8851_start_xmit_spi;

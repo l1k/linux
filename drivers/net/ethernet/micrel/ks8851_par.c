@@ -163,6 +163,35 @@ static unsigned int ks8851_rdreg16_par(struct ks8851_net *ks, unsigned int reg)
 }
 
 /**
+ * ks8851_rdreg8_par - read 8 bit register from chip
+ * @ks: The chip information
+ * @reg: The register address
+ *
+ * Read a 8bit register from the chip, returning the result
+ */
+static unsigned int ks8851_rdreg8_par(struct ks8851_net *ks, unsigned int reg)
+{
+	return le16_to_cpu(ks8851_rdreg16_par(ks, reg)) & 0xff;
+}
+
+/**
+ * ks8851_rdreg32_par - read 32 bit register from chip
+ * @ks: The chip information
+ * @reg: The register address
+ *
+ * Read a 32bit register from the chip, returning the result
+ */
+static unsigned int ks8851_rdreg32_par(struct ks8851_net *ks, unsigned int reg)
+{
+	u16 rx[2];
+
+	rx[0] = ks8851_rdreg16_par(ks, reg);
+	rx[1] = ks8851_rdreg16_par(ks, reg + 2);
+
+	return le32_to_cpup((u32 *)rx);
+}
+
+/**
  * ks8851_rdfifo_par - read data from the receive fifo
  * @ks: The device state.
  * @buff: The buffer address
@@ -284,8 +313,10 @@ static int ks8851_probe_par(struct platform_device *pdev)
 
 	ks->lock = ks8851_lock_par;
 	ks->unlock = ks8851_unlock_par;
+	ks->rdreg8 = ks8851_rdreg8_par;
 	ks->rdreg16 = ks8851_rdreg16_par;
 	ks->wrreg16 = ks8851_wrreg16_par;
+	ks->rdreg32 = ks8851_rdreg32_par;
 	ks->rdfifo = ks8851_rdfifo_par;
 	ks->wrfifo = ks8851_wrfifo_par;
 	ks->start_xmit = ks8851_start_xmit_par;
