@@ -8,10 +8,10 @@
  */
 #include <linux/capability.h>
 #include <linux/clocksource.h>
-#include <linux/workqueue.h>
 #include <linux/hrtimer.h>
-#include <linux/jiffies.h>
+#include <linux/kthread.h>
 #include <linux/math64.h>
+#include <linux/sched/types.h>
 #include <linux/timex.h>
 #include <linux/time.h>
 #include <linux/mm.h>
@@ -494,8 +494,10 @@ out:
 	return leap;
 }
 
-static void sync_hw_clock(struct work_struct *work);
-static DECLARE_DELAYED_WORK(sync_work, sync_hw_clock);
+#if IS_ENABLED(CONFIG_GENERIC_CMOS_UPDATE) || IS_ENABLED(CONFIG_RTC_SYSTOHC)
+static struct task_struct *sync_task;
+static struct hrtimer sync_timer;
+static bool sync_should_run;
 
 static void sched_sync_hw_clock(unsigned long target_nsec, bool fail)
 {
@@ -503,28 +505,14 @@ static void sched_sync_hw_clock(unsigned long target_nsec, bool fail)
 
 	ktime_get_real_ts64(&next);
 	if (!fail)
-		next.tv_sec = 659;
-	else {
-		/*
-		 * Try again as soon as possible. Delaying long periods
-		 * decreases the accuracy of the work queue timer. Due to this
-		 * the algorithm is very likely to require a short-sleep retry
-		 * after the above long sleep to synchronize ts_nsec.
-		 */
-		next.tv_sec = 0;
-	}
+		next.tv_sec += 659;
+	else
+		next.tv_sec += 1; /* Try again as soon as possible */
 
-	/* Compute the needed delay that will get to tv_nsec == target_nsec */
-	next.tv_nsec = target_nsec - next.tv_nsec;
-	if (next.tv_nsec <= 0)
-		next.tv_nsec += NSEC_PER_SEC;
-	if (next.tv_nsec >= NSEC_PER_SEC) {
-		next.tv_sec++;
-		next.tv_nsec -= NSEC_PER_SEC;
-	}
+	next.tv_nsec = target_nsec;
 
-	queue_delayed_work(system_power_efficient_wq, &sync_work,
-			   timespec64_to_jiffies(&next));
+	hrtimer_start(&sync_timer, timespec64_to_ktime(next),
+		      HRTIMER_MODE_ABS);
 }
 
 static void sync_rtc_clock(void)
@@ -616,7 +604,7 @@ static bool sync_cmos_clock(void)
  * set at the correct moment to phase synchronize the RTC second tick over
  * with the kernel clock.
  */
-static void sync_hw_clock(struct work_struct *work)
+static void sync_hw_clock(void)
 {
 	if (!ntp_synced())
 		return;
@@ -627,15 +615,64 @@ static void sync_hw_clock(struct work_struct *work)
 	sync_rtc_clock();
 }
 
+static enum hrtimer_restart sync_wakeup(struct hrtimer *timer)
+{
+	xchg(&sync_should_run, true);
+	wake_up_process(sync_task);
+	return HRTIMER_NORESTART;
+}
+
 void ntp_notify_cmos_timer(void)
 {
 	if (!ntp_synced())
 		return;
 
-	if (IS_ENABLED(CONFIG_GENERIC_CMOS_UPDATE) ||
-	    IS_ENABLED(CONFIG_RTC_SYSTOHC))
-		queue_delayed_work(system_power_efficient_wq, &sync_work, 0);
+	xchg(&sync_should_run, true);
+	if (!IS_ERR_OR_NULL(sync_task))
+		wake_up_process(sync_task);
 }
+
+static int sync_thread(void *data)
+{
+	struct sched_param param = { .sched_priority = MAX_RT_PRIO/2 };
+	int ret;
+
+	ret = sched_setscheduler_nocheck(current, SCHED_FIFO, &param);
+	if (ret)
+		pr_warn("%s: cannot set scheduling priority\n", __func__);
+
+	hrtimer_init(&sync_timer, CLOCK_REALTIME, HRTIMER_MODE_ABS |
+						  HRTIMER_MODE_HARD);
+	sync_timer.function = sync_wakeup;
+
+	for (;;) {
+		xchg(&sync_should_run, false);
+		sync_hw_clock();
+		set_current_state(TASK_IDLE);
+		if (sync_should_run) {
+			__set_current_state(TASK_RUNNING);
+			continue;
+		}
+		schedule();
+	}
+
+	return 0;
+}
+
+static int __init sync_init(void)
+{
+	sync_task = kthread_create(&sync_thread, NULL, "sync_hw_clock");
+	if (IS_ERR(sync_task)) {
+		pr_err("cannot create sync_hw_clock thread\n");
+		return PTR_ERR(sync_task);
+	}
+
+	sync_task->state = TASK_IDLE;
+	return 0;
+}
+
+pure_initcall(sync_init);
+#endif /* CONFIG_GENERIC_CMOS_UPDATE || CONFIG_RTC_SYSTOHC */
 
 /*
  * Propagate a new txc->status value into the NTP state:

@@ -10,4 +10,11 @@ extern ktime_t ntp_get_next_leap(void);
 extern int second_overflow(time64_t secs);
 extern int __do_adjtimex(struct timex *txc, const struct timespec64 *ts, s32 *time_tai);
 extern void __hardpps(const struct timespec64 *phase_ts, const struct timespec64 *raw_ts);
+
+#if IS_ENABLED(CONFIG_GENERIC_CMOS_UPDATE) || IS_ENABLED(CONFIG_RTC_SYSTOHC)
+void ntp_notify_cmos_timer(void);
+#else
+static inline void ntp_notify_cmos_timer(void) { }
+#endif
+
 #endif /* _LINUX_NTP_INTERNAL_H */
