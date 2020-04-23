@@ -497,9 +497,7 @@ out:
 static void sync_hw_clock(struct work_struct *work);
 static DECLARE_DELAYED_WORK(sync_work, sync_hw_clock);
 
-static void sched_sync_hw_clock(struct timespec64 now,
-				unsigned long target_nsec, bool fail)
-
+static void sched_sync_hw_clock(unsigned long target_nsec, bool fail)
 {
 	struct timespec64 next;
 
@@ -532,15 +530,14 @@ static void sched_sync_hw_clock(struct timespec64 now,
 static void sync_rtc_clock(void)
 {
 	unsigned long target_nsec;
-	struct timespec64 adjust, now;
+	struct timespec64 adjust;
 	int rc;
 
 	if (!IS_ENABLED(CONFIG_RTC_SYSTOHC))
 		return;
 
-	ktime_get_real_ts64(&now);
+	ktime_get_real_ts64(&adjust);
 
-	adjust = now;
 	if (persistent_clock_is_local)
 		adjust.tv_sec -= (sys_tz.tz_minuteswest * 60);
 
@@ -552,7 +549,7 @@ static void sync_rtc_clock(void)
 	if (rc == -ENODEV)
 		return;
 
-	sched_sync_hw_clock(now, target_nsec, rc);
+	sched_sync_hw_clock(target_nsec, rc);
 }
 
 #ifdef CONFIG_GENERIC_CMOS_UPDATE
@@ -607,7 +604,7 @@ static bool sync_cmos_clock(void)
 		}
 	}
 
-	sched_sync_hw_clock(now, target_nsec, rc);
+	sched_sync_hw_clock(target_nsec, rc);
 	return true;
 }
 
