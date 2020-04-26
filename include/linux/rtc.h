@@ -260,8 +260,10 @@ static inline bool rtc_tv_nsec_ok(s64 set_offset_nsec,
 
 #ifdef CONFIG_RTC_HCTOSYS_DEVICE
 extern int rtc_hctosys_ret;
+int rtc_hctosys(struct rtc_device *rtc);
 #else
 #define rtc_hctosys_ret -ENODEV
+static inline int rtc_hctosys(struct rtc_device *rtc) { };
 #endif
 
 #ifdef CONFIG_RTC_NVMEM

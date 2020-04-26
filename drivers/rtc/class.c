@@ -341,6 +341,9 @@ struct rtc_device *rtc_device_register(const char *name, struct device *dev,
 	dev_info(dev, "rtc core: registered %s as %s\n",
 			name, dev_name(&rtc->dev));
 
+	if (!strcmp(dev_name(&rtc->dev), CONFIG_RTC_HCTOSYS_DEVICE))
+		rtc_hctosys(rtc);
+
 	return rtc;
 
 exit_ida:

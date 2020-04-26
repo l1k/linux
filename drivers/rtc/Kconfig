@@ -66,10 +66,7 @@ config RTC_SYSTOHC_DEVICE
 	default RTC_HCTOSYS_DEVICE if RTC_HCTOSYS
 	default "rtc0"
 	help
-	  The RTC device used for NTP synchronization. The main difference
-	  between RTC_HCTOSYS_DEVICE and RTC_SYSTOHC_DEVICE is that this
-	  one can sleep when setting time, because it runs in the workqueue
-	  context.
+	  The RTC device used for NTP synchronization.
 
 config RTC_DEBUG
 	bool "RTC debug support"
