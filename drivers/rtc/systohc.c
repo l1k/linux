@@ -39,13 +39,6 @@ int rtc_set_ntp_time(struct timespec64 now, unsigned long *target_nsec)
 			  !rtc->ops->set_mmss))
 		goto out_close;
 
-	/* Compute the value of tv_nsec we require the caller to supply in
-	 * now.tv_nsec.  This is the value such that (now +
-	 * set_offset_nsec).tv_nsec == 0.
-	 */
-	set_normalized_timespec64(&to_set, 0, -rtc->set_offset_nsec);
-	*target_nsec = to_set.tv_nsec;
-
 	/* The ntp code must call this with the correct value in tv_nsec, if
 	 * it does not we update target_nsec and return EPROTO to make the ntp
 	 * code try again later.
@@ -53,7 +46,7 @@ int rtc_set_ntp_time(struct timespec64 now, unsigned long *target_nsec)
 	ok = rtc_tv_nsec_ok(rtc->set_offset_nsec, &to_set, &now);
 	if (!ok) {
 		err = -EPROTO;
-		goto out_close;
+		goto out_compute;
 	}
 
 	rtc_time64_to_tm(to_set.tv_sec, &tm);
@@ -63,6 +56,13 @@ int rtc_set_ntp_time(struct timespec64 now, unsigned long *target_nsec)
 	 */
 	err = rtc_set_time(rtc, &tm);
 
+out_compute:
+	/* Compute the value of tv_nsec we require the caller to supply
+	 * next time in now.tv_nsec.  This is the value such that (now +
+	 * set_offset_nsec).tv_nsec == 0.
+	 */
+	set_normalized_timespec64(&to_set, 0, -rtc->set_offset_nsec);
+	*target_nsec = to_set.tv_nsec;
 out_close:
 	rtc_class_close(rtc);
 out_err:

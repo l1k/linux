@@ -127,6 +127,7 @@ EXPORT_SYMBOL_GPL(rtc_read_time);
 
 int rtc_set_time(struct rtc_device *rtc, struct rtc_time *tm)
 {
+	u64 begin, end;
 	int err, uie;
 
 	err = rtc_valid_tm(tm);
@@ -156,9 +157,15 @@ int rtc_set_time(struct rtc_device *rtc, struct rtc_time *tm)
 
 	if (!rtc->ops)
 		err = -ENODEV;
-	else if (rtc->ops->set_time)
+	else if (rtc->ops->set_time) {
+		begin = ktime_get_ns();
 		err = rtc->ops->set_time(rtc->dev.parent, tm);
-	else if (rtc->ops->set_mmss64) {
+		end = ktime_get_ns();
+
+		if (!err) {
+			rtc->set_offset_nsec = end - begin;
+		}
+	} else if (rtc->ops->set_mmss64) {
 		time64_t secs64 = rtc_tm_to_time64(tm);
 
 		err = rtc->ops->set_mmss64(rtc->dev.parent, secs64);
