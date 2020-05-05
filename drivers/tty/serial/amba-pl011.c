@@ -2376,6 +2376,11 @@ static int pl011_rs485_config(struct uart_port *port,
 	/* activate new config */
 	pl011_rs485_tx_stop(uap);
 
+	if (port->rs485_term_gpio) {
+		gpiod_set_value_cansleep_rt(port->rs485_term_gpio,
+			  rs485->flags & SER_RS485_TERMINATE_BUS);
+	}
+
 	if (port->status & UPSTAT_AUTORTS &&
 	    !(port->rs485.flags & SER_RS485_ENABLED)) {
 		u32 cr = pl011_read(uap, REG_CR);
