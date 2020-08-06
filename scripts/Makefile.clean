@@ -34,6 +34,10 @@ __clean-files	:= \
 	$(hostprogs-always-y) $(hostprogs-always-m) $(hostprogs-always-) \
 	$(userprogs-always-y) $(userprogs-always-m) $(userprogs-always-)
 
+ifneq ($(extmodprogs),)
+__clean-files	+= .cross
+endif
+
 __clean-files   := $(filter-out $(no-clean-files), $(__clean-files))
 
 # clean-files is given relative to the current directory, unless it

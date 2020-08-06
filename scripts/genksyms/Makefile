@@ -1,6 +1,7 @@
 # SPDX-License-Identifier: GPL-2.0
 
 hostprogs-always-y	+= genksyms
+extmodprogs		+= genksyms
 
 genksyms-objs	:= genksyms.o parse.tab.o lex.lex.o
 

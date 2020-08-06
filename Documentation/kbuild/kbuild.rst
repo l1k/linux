@@ -209,6 +209,15 @@ The output directory is often set using "O=..." on the commandline.
 
 The value can be overridden in which case the default value is ignored.
 
+INSTALL_KBUILD_PATH
+-------------------
+INSTALL_KBUILD_PATH specifies where to install a build environment for
+external modules.
+
+The default value is::
+
+    /usr/src/linux-headers-$(KERNELVERSION)
+
 KBUILD_ABS_SRCTREE
 --------------------------------------------------
 Kbuild uses a relative path to point to the tree when possible. For instance,
