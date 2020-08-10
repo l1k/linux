@@ -43,6 +43,34 @@
 				always-running;
 			};
 
+			eth_switch {
+				compatible = "virtual,mdio-gpio";
+				#address-cells = <1>;
+				#size-cells = <0>;
+				gpios = <&gpio 45 GPIO_ACTIVE_HIGH>, /* MDC */
+					<&gpio 44 GPIO_ACTIVE_HIGH>; /* MDIO */
+				phy1: ethernet-phy@1 {
+					reg = <1>;
+					device_type = "ethernet-phy";
+				};
+				phy2: ethernet-phy@2 {
+					reg = <2>;
+					device_type = "ethernet-phy";
+				};
+				phy3: ethernet-phy@3 {
+					reg = <3>;
+					device_type = "ethernet-phy";
+				};
+				phy4: ethernet-phy@4 {
+					reg = <4>;
+					device_type = "ethernet-phy";
+				};
+			};
+
+			aliases {
+				mdio-gpio0 = "/eth_switch";
+			};
+
 			leds {
 				compatible = "gpio-leds";
 				power_red {
@@ -99,10 +127,6 @@
 	fragment@1 {
 		target = <&gpio>;
 		__overlay__ {
-			i2c0_gpio44: i2c0_gpio44 {
-				brcm,pins = <44 45>;
-				brcm,function = <BCM2835_FSEL_ALT1>;
-			};
 			i2c1_gpio2: i2c1_gpio2 {
 				brcm,pins = <2 3>;
 				brcm,function = <BCM2835_FSEL_ALT0>;
@@ -176,19 +200,6 @@
 	};
 
 	fragment@2 {
-		target = <&i2c0>;
-		__overlay__ {
-			#address-cells = <1>;
-			#size-cells = <0>;
-			pinctrl-names = "default";
-			pinctrl-0 = <&i2c0_gpio44>;
-			status = "okay";
-
-			/* TODO: ksz8795 */
-		};
-	};
-
-	fragment@3 {
 		target = <&i2c1>;
 		__overlay__ {
 			#address-cells = <1>;
@@ -213,7 +224,7 @@
 		};
 	};
 
-	fragment@4 {
+	fragment@3 {
 		target = <&spi0>;
 		__overlay__ {
 			#address-cells = <1>;
@@ -265,21 +276,21 @@
 		};
 	};
 
-	fragment@5 {
+	fragment@4 {
 		target = <&spidev0>;
 		__overlay__ {
 			status = "disabled";
 		};
 	};
 
-	fragment@6 {
+	fragment@5 {
 		target = <&spidev1>;
 		__overlay__ {
 			status = "disabled";
 		};
 	};
 
-	fragment@7 {
+	fragment@6 {
 		target = <&usb>;
 		__overlay__ {
 			#address-cells = <1>;
@@ -317,7 +328,7 @@
 		};
 	};
 
-	fragment@8 {
+	fragment@7 {
 		target = <&mmc>;
 		__overlay__ {
 			#address-cells = <1>;
@@ -337,7 +348,7 @@
 		};
 	};
 
-	fragment@9 {
+	fragment@8 {
 		target = <&uart0>;
 		__overlay__ {
 			linux,rs485-enabled-at-boot-time;
@@ -347,7 +358,7 @@
 		};
 	};
 
-	fragment@10 {
+	fragment@9 {
 		target = <&uart1>;
 		__overlay__ {
 			linux,rs485-enabled-at-boot-time;
@@ -358,14 +369,14 @@
 		};
 	};
 
-	fragment@11 {
+	fragment@10 {
 		target = <&fb>;
 		__overlay__ {
 			status = "disabled";
 		};
 	};
 
-	fragment@12 {
+	fragment@11 {
 		target-path = "/chosen";
 		chosen_overlay: __overlay__ {
 		};
