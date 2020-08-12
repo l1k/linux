@@ -338,7 +338,7 @@
 			status = "okay";
 			bus-width = <4>;
 			non-removable;
-			brcm,overclock-50 = <20>;
+			max-frequency = <28000000>;
 
 			wlan0: wifi@1 {
 				reg = <1>;
