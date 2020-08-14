@@ -47,47 +47,47 @@
 				compatible = "gpio-leds";
 				power_red {
 					gpios = <&gpio 16 GPIO_ACTIVE_HIGH>;
-					linux,default-trigger = "power_red";
+					linux,default-trigger = "none";
 				};
 				a_green {
 					gpios = <&expander 0 GPIO_ACTIVE_LOW>;
-					linux,default-trigger = "a_green";
+					linux,default-trigger = "none";
 				};
 				a_red {
 					gpios = <&expander 1 GPIO_ACTIVE_LOW>;
-					linux,default-trigger = "a_red";
+					linux,default-trigger = "none";
 				};
 				b_green {
 					gpios = <&expander 2 GPIO_ACTIVE_LOW>;
-					linux,default-trigger = "b_green";
+					linux,default-trigger = "none";
 				};
 				b_red {
 					gpios = <&expander 3 GPIO_ACTIVE_LOW>;
-					linux,default-trigger = "b_red";
+					linux,default-trigger = "none";
 				};
 				c_green {
 					gpios = <&expander 4 GPIO_ACTIVE_LOW>;
-					linux,default-trigger = "c_green";
+					linux,default-trigger = "none";
 				};
 				c_red {
 					gpios = <&expander 5 GPIO_ACTIVE_LOW>;
-					linux,default-trigger = "c_red";
+					linux,default-trigger = "none";
 				};
 				d_green {
 					gpios = <&expander 6 GPIO_ACTIVE_LOW>;
-					linux,default-trigger = "d_green";
+					linux,default-trigger = "none";
 				};
 				d_red {
 					gpios = <&expander 7 GPIO_ACTIVE_LOW>;
-					linux,default-trigger = "d_red";
+					linux,default-trigger = "none";
 				};
 				e_green {
 					gpios = <&expander 8 GPIO_ACTIVE_LOW>;
-					linux,default-trigger = "e_green";
+					linux,default-trigger = "none";
 				};
 				e_red {
 					gpios = <&expander 9 GPIO_ACTIVE_LOW>;
-					linux,default-trigger = "e_red";
+					linux,default-trigger = "none";
 				};
 				act {
 					status = "disabled";
