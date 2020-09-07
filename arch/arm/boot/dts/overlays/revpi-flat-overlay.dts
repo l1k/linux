@@ -50,43 +50,43 @@
 					gpios = <&gpio 16 GPIO_ACTIVE_HIGH>;
 					linux,default-trigger = "none";
 				};
-				a_green {
+				a1_green {
 					gpios = <&expander 0 GPIO_ACTIVE_LOW>;
 					linux,default-trigger = "none";
 				};
-				a_red {
+				a1_red {
 					gpios = <&expander 1 GPIO_ACTIVE_LOW>;
 					linux,default-trigger = "none";
 				};
-				b_green {
+				a2_green {
 					gpios = <&expander 2 GPIO_ACTIVE_LOW>;
 					linux,default-trigger = "none";
 				};
-				b_red {
+				a2_red {
 					gpios = <&expander 3 GPIO_ACTIVE_LOW>;
 					linux,default-trigger = "none";
 				};
-				c_green {
+				a3_green {
 					gpios = <&expander 4 GPIO_ACTIVE_LOW>;
 					linux,default-trigger = "none";
 				};
-				c_red {
+				a3_red {
 					gpios = <&expander 5 GPIO_ACTIVE_LOW>;
 					linux,default-trigger = "none";
 				};
-				d_green {
+				a4_green {
 					gpios = <&expander 6 GPIO_ACTIVE_LOW>;
 					linux,default-trigger = "none";
 				};
-				d_red {
+				a4_red {
 					gpios = <&expander 7 GPIO_ACTIVE_LOW>;
 					linux,default-trigger = "none";
 				};
-				e_green {
+				a5_green {
 					gpios = <&expander 8 GPIO_ACTIVE_LOW>;
 					linux,default-trigger = "none";
 				};
-				e_red {
+				a5_red {
 					gpios = <&expander 9 GPIO_ACTIVE_LOW>;
 					linux,default-trigger = "none";
 				};
