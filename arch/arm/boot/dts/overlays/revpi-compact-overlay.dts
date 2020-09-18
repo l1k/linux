@@ -16,8 +16,8 @@
 	fragment@0 {
 		target-path = "/";
 		__overlay__ {
-			compatible = "brcm,bcm2837", "brcm,bcm2836",
-				     "kunbus,revpi-compact";
+			compatible = "kunbus,revpi-compact", "brcm,bcm2837",
+				     "brcm,bcm2836";
 
 			aout_vref: fixedregulator_2v5x4 {
 				compatible = "regulator-fixed";

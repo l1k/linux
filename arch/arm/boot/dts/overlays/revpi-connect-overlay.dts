@@ -16,8 +16,8 @@
 	fragment@0 {
 		target-path = "/";
 		__overlay__ {
-			compatible = "brcm,bcm2837", "brcm,bcm2836",
-				     "kunbus,revpi-connect";
+			compatible = "kunbus,revpi-connect", "brcm,bcm2837",
+				     "brcm,bcm2836";
 
 			leds {
 				compatible = "gpio-leds";
