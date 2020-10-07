@@ -111,29 +111,11 @@
 	fragment@1 {
 		target = <&gpio>;
 		__overlay__ {
-			i2c0_gpio44: i2c0_gpio44 {
-				brcm,pins = <44 45>;
-				brcm,function = <BCM2835_FSEL_ALT1>;
-			};
-			i2c1_gpio2: i2c1_gpio2 {
-				brcm,pins = <2 3>;
-				brcm,function = <BCM2835_FSEL_ALT0>;
-			};
-			spi0_cs_pins: spi0_cs_pins {
+			spi0_cs_pins {
 				/* aout ain mbus tpm */
 				brcm,pins     = <8 7 6 30>;
 				brcm,function = <BCM2835_FSEL_GPIO_OUT>;
 				brcm,pull     = <BCM2835_PUD_OFF>;
-			};
-			emmc_gpio34: emmc_gpio34 {
-				brcm,pins = <34 35 36 37 38 39>;
-				brcm,function = <BCM2835_FSEL_ALT3>;
-				brcm,pull = <BCM2835_PUD_OFF
-					     BCM2835_PUD_UP
-					     BCM2835_PUD_UP
-					     BCM2835_PUD_UP
-					     BCM2835_PUD_UP
-					     BCM2835_PUD_UP>;
 			};
 			tpm_pins {
 				/* irq reset */
