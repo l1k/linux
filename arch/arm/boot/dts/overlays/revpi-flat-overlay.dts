@@ -120,8 +120,8 @@
 			tpm_pins {
 				/* irq reset */
 				brcm,pins     = <0 1>;
-				brcm,function = <BCM2835_FSEL_GPIO_IN
-						 BCM2835_FSEL_GPIO_OUT>;
+				brcm,function = <BCM2835_FSEL_GPIO_OUT
+						 BCM2835_FSEL_GPIO_IN>;
 				brcm,pull     = <BCM2835_PUD_OFF>;
 			};
 			mbus_pins {
