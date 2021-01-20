@@ -253,7 +253,7 @@
 				spi-max-frequency = <1000000>;	/* <= 43 MHz */
 				interrupt-parent = <&gpio>;
 				#interrupt-cells = <2>;
-				interrupts = <0 IRQ_TYPE_LEVEL_LOW>;
+				interrupts = <1 IRQ_TYPE_LEVEL_LOW>;
 				status = "okay";
 			};
 		};
