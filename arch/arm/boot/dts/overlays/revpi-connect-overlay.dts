@@ -19,6 +19,21 @@
 			compatible = "kunbus,revpi-connect", "brcm,bcm2837",
 				     "brcm,bcm2836";
 
+			/*
+			   The reset of the KSZ8851 used for the pibridge has a
+			   circuit, which keeps it pulled for up to 80ms. To
+			   workaroud this issue, a regulator is used. The
+			   circuit implements a reset instead of a n_reset.
+			*/
+			pb_rst: regulator_pbrst {
+				compatible = "regulator-fixed";
+				regulator-name = "pb_rst";
+				regulator-min-microvolt = <3300000>;
+				regulator-max-microvolt = <3300000>;
+				gpio = <&gpio 40 GPIO_ACTIVE_LOW>;
+				startup-delay-us = <80000>;
+			};
+
 			leds {
 				compatible = "gpio-leds";
 				power_red {
@@ -151,7 +166,7 @@
 				interrupt-parent = <&gpio>;
 				#interrupt-cells = <2>;
 				interrupts = <8 IRQ_TYPE_LEVEL_LOW>;
-				reset-gpios = <&gpio 40 GPIO_ACTIVE_LOW>;
+				vdd-supply = <&pb_rst>;
 				status = "okay";
 			};
 		};
