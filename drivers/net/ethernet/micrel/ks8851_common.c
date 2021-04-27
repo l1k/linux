@@ -1188,6 +1188,8 @@ int ks8851_probe_common(struct net_device *netdev, struct device *dev,
 	if (IS_ERR(ks->vdd_reg)) {
 		ret = PTR_ERR(ks->vdd_reg);
 		goto err_reg;
+	} else if (ks->vdd_reg) {
+		usleep_range(10000, 11000);
 	}
 
 	ret = regulator_enable(ks->vdd_reg);
