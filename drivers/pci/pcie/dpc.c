@@ -98,6 +98,61 @@ void pci_restore_dpc_state(struct pci_dev *dev)
 	pci_write_config_word(dev, dpc->cap_pos + PCI_EXP_DPC_CTL, *cap);
 }
 
+static DECLARE_WAIT_QUEUE_HEAD(dpc_completed_waitqueue);
+
+#ifdef CONFIG_HOTPLUG_PCI_PCIE
+static bool dpc_completed(struct dpc_dev *dpc)
+{
+	struct pci_dev *pdev = dpc->dev->port;
+	u16 status;
+
+	pci_read_config_word(pdev, dpc->cap_pos + PCI_EXP_DPC_STATUS, &status);
+	if ((status != 0xffff) && (status & PCI_EXP_DPC_STATUS_TRIGGER))
+		return false;
+
+	if (test_bit(PCI_DPC_RECOVERING, &pdev->priv_flags))
+		return false;
+
+	return true;
+}
+
+/**
+ * pci_dpc_recovered - whether DPC triggered and has recovered successfully
+ * @pdev: PCI device
+ *
+ * Return true if DPC was triggered for @pdev and has recovered successfully.
+ * Wait for recovery if it hasn't completed yet.  Called from the PCIe hotplug
+ * driver to recognize and ignore Link Down/Up events caused by DPC.
+ */
+bool pci_dpc_recovered(struct pci_dev *pdev)
+{
+	struct pci_host_bridge *host;
+	struct dpc_dev *dpc;
+
+	dpc = to_dpc_dev(dev);
+	if (!dpc)
+		return false;
+
+	/*
+	 * Synchronization between hotplug and DPC is not supported
+	 * if DPC is owned by firmware and EDR is not enabled.
+	 */
+	host = pci_find_host_bridge(pdev->bus);
+	if (!host->native_dpc && !IS_ENABLED(CONFIG_PCIE_EDR))
+		return false;
+
+	/*
+	 * Need a timeout in case DPC never completes due to failure of
+	 * dpc_wait_rp_inactive().  The spec doesn't mandate a time limit,
+	 * but reports indicate that DPC completes within 4 seconds.
+	 */
+	wait_event_timeout(dpc_completed_waitqueue, dpc_completed(dpc),
+			   msecs_to_jiffies(4000));
+
+	return test_and_clear_bit(PCI_DPC_RECOVERED, &pdev->priv_flags);
+}
+#endif /* CONFIG_HOTPLUG_PCI_PCIE */
+
 static int dpc_wait_rp_inactive(struct dpc_dev *dpc)
 {
 	unsigned long timeout = jiffies + HZ;
@@ -120,7 +175,10 @@ static int dpc_wait_rp_inactive(struct dpc_dev *dpc)
 static pci_ers_result_t dpc_reset_link(struct pci_dev *pdev)
 {
 	struct dpc_dev *dpc;
+	pci_ers_result_t ret;
 	u16 cap;
+
+	set_bit(PCI_DPC_RECOVERING, &pdev->priv_flags);
 
 	/*
 	 * DPC disables the Link automatically in hardware, so it has
@@ -135,16 +193,26 @@ static pci_ers_result_t dpc_reset_link(struct pci_dev *pdev)
 	 */
 	pcie_wait_for_link(pdev, false);
 
-	if (dpc->rp_extensions && dpc_wait_rp_inactive(dpc))
+	if (dpc->rp_extensions && dpc_wait_rp_inactive(dpc)) {
+		clear_bit(PCI_DPC_RECOVERED, &pdev->priv_flags);
 		return PCI_ERS_RESULT_DISCONNECT;
+		goto out;
+	}
 
 	pci_write_config_word(pdev, cap + PCI_EXP_DPC_STATUS,
 			      PCI_EXP_DPC_STATUS_TRIGGER);
 
-	if (!pcie_wait_for_link(pdev, true))
-		return PCI_ERS_RESULT_DISCONNECT;
-
-	return PCI_ERS_RESULT_RECOVERED;
+	if (!pcie_wait_for_link(pdev, true)) {
+		clear_bit(PCI_DPC_RECOVERED, &pdev->priv_flags);
+		ret = PCI_ERS_RESULT_DISCONNECT;
+	} else {
+		set_bit(PCI_DPC_RECOVERED, &pdev->priv_flags);
+		ret = PCI_ERS_RESULT_RECOVERED;
+	}
+out:
+	clear_bit(PCI_DPC_RECOVERING, &pdev->priv_flags);
+	wake_up_all(&dpc_completed_waitqueue);
+	return ret;
 }
 
 static void dpc_process_rp_pio_error(struct dpc_dev *dpc)
