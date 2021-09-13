@@ -84,6 +84,8 @@ MODULE_PARM_DESC(polling_limit_us,
  * @regs: base address of register map
  * @clk: core clock, divided to calculate serial clock
  * @clk_hz: core clock cached speed
+ * @speed_hz: SPI clock currently configured
+ * @effective_speed_hz: effective SPI clock currently configured
  * @irq: interrupt, signals TX FIFO empty or RX FIFO ¾ full
  * @tfr: SPI transfer currently processed
  * @ctlr: SPI controller reverse lookup
@@ -118,6 +120,8 @@ struct bcm2835_spi {
 	void __iomem *regs;
 	struct clk *clk;
 	unsigned long clk_hz;
+	u32 speed_hz;
+	u32 effective_speed_hz;
 	int irq;
 	struct spi_transfer *tfr;
 	struct spi_controller *ctlr;
@@ -1041,18 +1045,10 @@ static int bcm2835_spi_transfer_one_poll(struct spi_controller *ctlr,
 	return 0;
 }
 
-static int bcm2835_spi_transfer_one(struct spi_controller *ctlr,
-				    struct spi_device *spi,
-				    struct spi_transfer *tfr)
+void bcm2835_spi_set_clk(struct bcm2835_spi *bs, struct spi_transfer *tfr)
 {
-	struct bcm2835_spi *bs = spi_controller_get_devdata(ctlr);
-	struct bcm2835_spidev *slv = spi_get_ctldata(spi);
-	unsigned long spi_hz, cdiv;
-	unsigned long hz_per_byte, byte_limit;
-	u32 cs = slv->prepare_cs;
-
-	/* set clock */
-	spi_hz = tfr->speed_hz;
+	unsigned long spi_hz = bs->speed_hz = tfr->speed_hz;
+	unsigned long cdiv;
 
 	if (spi_hz >= bs->clk_hz / 2) {
 		cdiv = 2; /* clk_hz/2 is the fastest we can go */
@@ -1066,8 +1062,27 @@ static int bcm2835_spi_transfer_one(struct spi_controller *ctlr,
 	} else {
 		cdiv = 0; /* 0 is the slowest we can go */
 	}
-	tfr->effective_speed_hz = cdiv ? (bs->clk_hz / cdiv) : (bs->clk_hz / 65536);
+
+	tfr->effective_speed_hz = bs->effective_speed_hz =
+		cdiv ? (bs->clk_hz / cdiv) : (bs->clk_hz / 65536);
+
 	bcm2835_wr(bs, BCM2835_SPI_CLK, cdiv);
+}
+
+static int bcm2835_spi_transfer_one(struct spi_controller *ctlr,
+				    struct spi_device *spi,
+				    struct spi_transfer *tfr)
+{
+	struct bcm2835_spi *bs = spi_controller_get_devdata(ctlr);
+	struct bcm2835_spidev *slv = spi_get_ctldata(spi);
+	unsigned long hz_per_byte, byte_limit;
+	u32 cs = slv->prepare_cs;
+
+	/* set clock if necessary */
+	if (tfr->speed_hz == bs->speed_hz)
+		tfr->effective_speed_hz = bs->effective_speed_hz;
+	else
+		bcm2835_spi_set_clk(bs, tfr);
 
 	/* handle all the 3-wire mode */
 	if (spi->mode & SPI_3WIRE && tfr->rx_buf)
@@ -1356,6 +1371,7 @@ static int bcm2835_spi_probe(struct platform_device *pdev)
 
 	clk_prepare_enable(bs->clk);
 	bs->clk_hz = clk_get_rate(bs->clk);
+	bs->effective_speed_hz = bs->clk_hz / 65536;
 
 	err = bcm2835_dma_init(ctlr, &pdev->dev, bs);
 	if (err)
@@ -1364,6 +1380,7 @@ static int bcm2835_spi_probe(struct platform_device *pdev)
 	/* initialise the hardware with the default polarities */
 	bcm2835_wr(bs, BCM2835_SPI_CS,
 		   BCM2835_SPI_CS_CLEAR_RX | BCM2835_SPI_CS_CLEAR_TX);
+	bcm2835_wr(bs, BCM2835_SPI_CLK, 0);
 
 	err = devm_request_irq(&pdev->dev, bs->irq, bcm2835_spi_interrupt, 0,
 			       dev_name(&pdev->dev), bs);
