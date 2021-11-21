@@ -44,6 +44,7 @@
 #define	UART_HAS_EFR2			BIT(4)
 #define UART_HAS_RHR_IT_DIS		BIT(5)
 #define UART_RX_TIMEOUT_QUIRK		BIT(6)
+#define UART_HAS_NATIVE_RS485		BIT(7)
 
 #define OMAP_UART_FCR_RX_TRIG		6
 #define OMAP_UART_FCR_TX_TRIG		4
@@ -101,6 +102,11 @@
 #define UART_OMAP_IER2			0x1B
 #define UART_OMAP_IER2_RHR_IT_DIS	BIT(2)
 
+/* Mode Definition Register 3 */
+#define UART_OMAP_MDR3			0x20
+#define UART_OMAP_MDR3_DIR_POL		BIT(3)
+#define UART_OMAP_MDR3_DIR_EN		BIT(4)
+
 /* Enhanced features register 2 */
 #define UART_OMAP_EFR2			0x23
 #define UART_OMAP_EFR2_TIMEOUT_BEHAVE	BIT(6)
@@ -112,6 +118,7 @@ struct omap8250_priv {
 	int line;
 	u8 habit;
 	u8 mdr1;
+	u8 mdr3;
 	u8 efr;
 	u8 scr;
 	u8 wer;
@@ -345,7 +352,9 @@ static void omap8250_restore_regs(struct uart_8250_port *up)
 
 	up->port.ops->set_mctrl(&up->port, up->port.mctrl);
 
-	if (up->port.rs485.flags & SER_RS485_ENABLED)
+	if (priv->habit & UART_HAS_NATIVE_RS485)
+		serial_out(up, UART_OMAP_MDR3, priv->mdr3);
+	else if (up->port.rs485.flags & SER_RS485_ENABLED)
 		serial8250_em485_stop_tx(up);
 }
 
@@ -791,6 +800,49 @@ static void omap_8250_unthrottle(struct uart_port *port)
 
 	pm_runtime_mark_last_busy(port->dev);
 	pm_runtime_put_autosuspend(port->dev);
+}
+
+static int omap8250_rs485_config(struct uart_port *port,
+				 struct ktermios *termios,
+				 struct serial_rs485 *rs485)
+{
+	struct uart_8250_port *up = up_to_u8250p(port);
+	struct omap8250_priv *priv = port->private_data;
+	unsigned int baud;
+
+	/*
+	 * There is a fixed delay of 3 bit clock cycles after the TX shift
+	 * register is going empty to allow time for the stop bit to transition
+	 * through the transceiver before direction is changed to receive.
+	 */
+	if (priv->quot) {
+		if (priv->mdr1 & UART_OMAP_MDR1_16X_MODE)
+			baud = port->uartclk / (16 * priv->quot);
+		else
+			baud = port->uartclk / (13 * priv->quot);
+		rs485->delay_rts_after_send = 3 * MSEC_PER_SEC / baud;
+	} else {
+		rs485->delay_rts_after_send = 0;
+	}
+	rs485->delay_rts_before_send = 0;
+
+	if (rs485->flags & SER_RS485_ENABLED)
+		priv->mdr3 |= UART_OMAP_MDR3_DIR_EN;
+	else
+		priv->mdr3 &= ~UART_OMAP_MDR3_DIR_EN;
+
+	/*
+	 * Retain same polarity semantics as RS485 software emulation,
+	 * i.e. SER_RS485_RTS_ON_SEND means driving RTS low on send.
+	 */
+	if (rs485->flags & SER_RS485_RTS_ON_SEND)
+		priv->mdr3 &= ~UART_OMAP_MDR3_DIR_POL;
+	else
+		priv->mdr3 |= UART_OMAP_MDR3_DIR_POL;
+
+	serial_out(up, UART_OMAP_MDR3, priv->mdr3);
+
+	return 0;
 }
 
 #ifdef CONFIG_SERIAL_8250_DMA
@@ -1242,7 +1294,7 @@ static struct omap8250_dma_params am33xx_dma = {
 static struct omap8250_platdata am654_platdata = {
 	.dma_params	= &am654_dma,
 	.habit		= UART_HAS_EFR2 | UART_HAS_RHR_IT_DIS |
-			  UART_RX_TIMEOUT_QUIRK,
+			  UART_RX_TIMEOUT_QUIRK | UART_HAS_NATIVE_RS485,
 };
 
 static struct omap8250_platdata am33xx_platdata = {
@@ -1335,10 +1387,7 @@ static int omap8250_probe(struct platform_device *pdev)
 	up.port.shutdown = omap_8250_shutdown;
 	up.port.throttle = omap_8250_throttle;
 	up.port.unthrottle = omap_8250_unthrottle;
-	up.port.rs485_config = serial8250_em485_config;
 	up.port.rs485_supported = serial8250_em485_supported;
-	up.rs485_start_tx = serial8250_em485_start_tx;
-	up.rs485_stop_tx = serial8250_em485_stop_tx;
 	up.port.has_sysrq = IS_ENABLED(CONFIG_SERIAL_8250_CONSOLE);
 
 	ret = of_alias_get_id(np, "serial");
@@ -1375,6 +1424,14 @@ static int omap8250_probe(struct platform_device *pdev)
 		dev_warn(&pdev->dev,
 			 "No clock speed specified: using default: %d\n",
 			 DEFAULT_CLK_SPEED);
+	}
+
+	if (priv->habit & UART_HAS_NATIVE_RS485) {
+		up.port.rs485_config = omap8250_rs485_config;
+	} else {
+		up.port.rs485_config = serial8250_em485_config;
+		up.rs485_start_tx = serial8250_em485_start_tx;
+		up.rs485_stop_tx = serial8250_em485_stop_tx;
 	}
 
 	priv->latency = PM_QOS_CPU_LATENCY_DEFAULT_VALUE;
