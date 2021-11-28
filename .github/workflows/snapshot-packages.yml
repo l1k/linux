@@ -1,0 +1,40 @@
+name: Build
+on:
+  pull_request:
+    types:
+      - labeled
+jobs:
+  kernelbakery_snapshot:
+    name: snapshot
+    if: ${{ github.event_name == 'pull_request' && github.event.label.name == 'snapshot-packages'}}
+    uses:  RevolutionPi/ci-workflows/.github/workflows/kernel-snapshot.yml@main
+    with:
+      kernelbakery_branch: master
+      picontrol_branch: master
+      build_commit: ${{ github.event.pull_request.head.sha }}
+  link_artifacts:
+    name: link artifacts in PR
+    if: ${{ (github.event_name == 'pull_request' && github.event.label.name == 'snapshot-packages') }}
+    needs: kernelbakery_snapshot
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/github-script@v5
+        with:
+          github-token: ${{secrets.GITHUB_TOKEN}}
+          script: |
+            github.rest.issues.createComment({
+              issue_number: context.issue.number,
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              body: '📦 Your snapshot packages are ready! https://github.com/RevolutionPi/linux/actions/runs/${{github.run_id}}'
+            })
+      - uses: actions/github-script@v5
+        with:
+          github-token: ${{secrets.GITHUB_TOKEN}}
+          script: |
+            github.rest.issues.removeLabel({
+              issue_number: context.issue.number,
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              name: 'snapshot-packages'
+            })

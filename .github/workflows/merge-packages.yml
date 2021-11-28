@@ -1,0 +1,12 @@
+name: Build
+on:
+  push:
+    branches:
+      - revpi-5.10
+jobs:
+  kernelbakery_snapshot:
+    name: snapshot
+    uses:  RevolutionPi/ci-workflows/.github/workflows/kernel-snapshot.yml@main
+    with:
+      kernelbakery_branch: master
+      picontrol_branch: master

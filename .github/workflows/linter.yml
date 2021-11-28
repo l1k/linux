@@ -1,0 +1,14 @@
+name: Linter
+on:
+  #- push
+  - pull_request
+jobs:      
+  checkpatch_linter:
+    name: checkpatch
+    runs-on: ubuntu-latest
+    steps:
+    - name: Checkout repository
+      uses: actions/checkout@v2
+
+    - name: Run checkpatch linter
+      uses: webispy/checkpatch-action@master
