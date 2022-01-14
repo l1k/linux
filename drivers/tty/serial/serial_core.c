@@ -3271,5 +3271,32 @@ int uart_get_rs485_mode(struct uart_port *port)
 }
 EXPORT_SYMBOL_GPL(uart_get_rs485_mode);
 
+/**
+ * uart_sanitize_rs485_mode() - sanitize rs485 properties for given uart
+ * @port: uart device's target port
+ *
+ * Correct faulty rs485 properties after they're passed in from user space
+ * through a TIOCSRS485 ioctl() or retrieved from the device tree or ACPI.
+ */
+void uart_sanitize_rs485_mode(struct uart_port *port)
+{
+	struct serial_rs485 *rs485 = &port->rs485;
+	struct device *dev = port->dev;
+
+	/* assume active-high polarity if settings are nonsensical */
+	if (!!(rs485->flags & SER_RS485_RTS_ON_SEND) ==
+	    !!(rs485->flags & SER_RS485_RTS_AFTER_SEND)) {
+		rs485->flags |= SER_RS485_RTS_ON_SEND;
+		rs485->flags &= ~SER_RS485_RTS_AFTER_SEND;
+	}
+
+	/* clamp the delays to [0, 100ms] */
+	rs485->delay_rts_before_send = min(rs485->delay_rts_before_send, 100U);
+	rs485->delay_rts_after_send  = min(rs485->delay_rts_after_send, 100U);
+
+	memset(rs485->padding, 0, sizeof(rs485->padding));
+}
+EXPORT_SYMBOL_GPL(uart_sanitize_rs485_mode);
+
 MODULE_DESCRIPTION("Serial driver core");
 MODULE_LICENSE("GPL");
