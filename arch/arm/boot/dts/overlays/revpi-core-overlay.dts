@@ -66,6 +66,9 @@
 	fragment@1 {
 		target = <&gpio>;
 		__overlay__ {
+			pinctrl-names = "default";
+			pinctrl-0 = <&sniff_a_pins>;
+
 			spi0_pins {
 				/* miso mosi clock */
 				brcm,pins     = <37 38 39>;
@@ -88,6 +91,12 @@
 				brcm,pins     = <44 45>;
 				brcm,function = <BCM2835_FSEL_ALT2>;
 				brcm,pull     = <BCM2835_PUD_OFF>;
+			};
+			sniff_a_pins: pb_sniff_a_pins {
+				/* A2 */
+				brcm,pins     = <28>;
+				brcm,function = <BCM2835_FSEL_GPIO_IN>;
+				brcm,pull     = <BCM2835_PUD_DOWN>;
 			};
 		};
 	};
