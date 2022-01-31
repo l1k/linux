@@ -19,6 +19,15 @@
 			compatible = "kunbus,revpi-core", "brcm,bcm2837",
 				     "brcm,bcm2836", "brcm,bcm2835";
 
+			pibridge {
+				compatible = "kunbus,pibridge";
+				/* Sniff pins 1A and 2A */
+				left-sniff-gpios = <&gpio 42 GPIO_ACTIVE_HIGH>,
+						   <&gpio 28 GPIO_ACTIVE_HIGH>;
+				/* Sniff pins 1B and 2B */
+				right-sniff-gpios = <&gpio 43 GPIO_ACTIVE_HIGH>,
+						    <&gpio 29 GPIO_ACTIVE_HIGH>;
+			};
 			/*
 			   The reset of the KSZ8851 used for the pibridge has a
 			   circuit, which keeps it pulled for up to 80ms. To
