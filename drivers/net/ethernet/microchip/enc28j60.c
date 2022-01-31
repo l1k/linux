@@ -57,7 +57,7 @@ struct enc28j60_net {
 	struct spi_device *spi;
 	struct mutex lock;
 	struct sk_buff *tx_skb;
-	struct work_struct tx_work;
+	struct task_struct *tx_thread;
 	struct work_struct irq_work;
 	struct work_struct setrx_work;
 	struct work_struct restart_work;
@@ -1295,18 +1295,31 @@ static netdev_tx_t enc28j60_send_packet(struct sk_buff *skb,
 
 	/* Remember the skb for deferred processing */
 	priv->tx_skb = skb;
-	schedule_work(&priv->tx_work);
+	wake_up_process(priv->tx_thread);
 
 	return NETDEV_TX_OK;
 }
 
-static void enc28j60_tx_work_handler(struct work_struct *work)
+static int enc28j60_tx_thread(void *data)
 {
-	struct enc28j60_net *priv =
-		container_of(work, struct enc28j60_net, tx_work);
+	struct enc28j60_net *priv = (struct enc28j60_net *)data;
 
-	/* actual delivery of data */
-	enc28j60_hw_tx(priv);
+	while (true) {
+		set_current_state(TASK_IDLE);
+
+		if (kthread_should_stop()) {
+			__set_current_state(TASK_RUNNING);
+			break;
+		}
+
+		/* actual delivery of data */
+		if (priv->tx_skb)
+			enc28j60_hw_tx(priv);
+
+		schedule();
+	}
+
+	return 0;
 }
 
 static irqreturn_t enc28j60_irq(int irq, void *dev_id)
@@ -1557,7 +1570,6 @@ static int enc28j60_probe(struct spi_device *spi)
 	priv->spi = spi;	/* priv to spi reference */
 	priv->msg_enable = netif_msg_init(debug.msg_enable, ENC28J60_MSG_DEFAULT);
 	mutex_init(&priv->lock);
-	INIT_WORK(&priv->tx_work, enc28j60_tx_work_handler);
 	INIT_WORK(&priv->setrx_work, enc28j60_setrx_work_handler);
 	INIT_WORK(&priv->irq_work, enc28j60_irq_work_handler);
 	INIT_WORK(&priv->restart_work, enc28j60_restart_work_handler);
@@ -1594,6 +1606,13 @@ static int enc28j60_probe(struct spi_device *spi)
 
 	enc28j60_lowpower(priv, true);
 
+	priv->tx_thread = kthread_create(&enc28j60_tx_thread, priv, "enc28j60_tx");
+	if (IS_ERR(priv->tx_thread)) {
+		netdev_err(dev, "create tx thread failed\n");
+		goto error_tx_thread;
+	}
+	wake_up_process(priv->tx_thread);
+
 	ret = register_netdev(dev);
 	if (ret) {
 		if (netif_msg_probe(priv))
@@ -1605,6 +1624,8 @@ static int enc28j60_probe(struct spi_device *spi)
 	return 0;
 
 error_register:
+	kthread_stop(priv->tx_thread);
+error_tx_thread:
 	free_irq(spi->irq, priv);
 error_irq:
 	free_netdev(dev);
@@ -1617,6 +1638,7 @@ static int enc28j60_remove(struct spi_device *spi)
 	struct enc28j60_net *priv = spi_get_drvdata(spi);
 
 	unregister_netdev(priv->netdev);
+	kthread_stop(priv->tx_thread);
 	free_irq(spi->irq, priv);
 	free_netdev(priv->netdev);
 
