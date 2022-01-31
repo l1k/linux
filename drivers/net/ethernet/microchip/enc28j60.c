@@ -1312,6 +1312,11 @@ static int enc28j60_tx_thread(void *data)
 			break;
 		}
 
+		/* Make sure the assignment to priv->tx_skb is
+		 * visible here by this thread. This barrier pairs
+		 * with wake_up_process in enc28j60_send_packet().
+		 */
+		smp_rmb();
 		/* actual delivery of data */
 		if (priv->tx_skb)
 			enc28j60_hw_tx(priv);
