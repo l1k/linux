@@ -19,6 +19,16 @@
 			compatible = "kunbus,revpi-connect", "brcm,bcm2837",
 				     "brcm,bcm2836";
 
+			pibridge {
+				compatible = "kunbus,pibridge";
+				/* X2DI, X2DO, WDTrigger */
+				connect-gpios = <&gpio 0 GPIO_ACTIVE_HIGH>,
+						<&gpio 1 GPIO_ACTIVE_HIGH>,
+						<&gpio 42 GPIO_ACTIVE_HIGH>;
+				/* Sniff pins 1A and 2A */
+				left-sniff-gpios = <&gpio 43 GPIO_ACTIVE_HIGH>,
+						   <&gpio 29 GPIO_ACTIVE_HIGH>;
+			};
 			/*
 			   The reset of the KSZ8851 used for the pibridge has a
 			   circuit, which keeps it pulled for up to 80ms. To
