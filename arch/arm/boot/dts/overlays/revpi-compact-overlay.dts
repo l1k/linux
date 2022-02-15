@@ -87,7 +87,7 @@
 					gpios = <&gpio 33 GPIO_ACTIVE_HIGH>;
 					linux,default-trigger = "a2_red";
 				};
-				act {
+				led-act {
 					status = "disabled";
 				};
 			};

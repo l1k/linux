@@ -91,7 +91,7 @@
 					gpios = <&expander 9 GPIO_ACTIVE_LOW>;
 					linux,default-trigger = "a5_red";
 				};
-				act {
+				led-act {
 					status = "disabled";
 				};
 			};
