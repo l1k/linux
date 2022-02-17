@@ -1599,6 +1599,7 @@ static int enc28j60_probe(struct spi_device *spi)
 		netdev_err(dev, "create tx thread failed\n");
 		goto error_tx_thread;
 	}
+	sched_set_fifo(priv->tx_thread);
 	wake_up_process(priv->tx_thread);
 
 	ret = register_netdev(dev);
