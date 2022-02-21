@@ -37,6 +37,8 @@
 
 			can@0 {
 				compatible = "holt,hi3110";
+				pinctrl-names = "default";
+				pinctrl-0 = <&conbridge_int_pins>;
 				reg = <0>;
 				spi-max-frequency = <10000000>;	/* <= 20 MHz */
 				clocks = <&can0_osc>;

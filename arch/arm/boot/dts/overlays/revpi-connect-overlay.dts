@@ -37,6 +37,8 @@
 			*/
 			pb_rst: regulator_pbrst {
 				compatible = "regulator-fixed";
+				pinctrl-names = "default";
+				pinctrl-0 = <&eth2_reset_pins>;
 				regulator-name = "pb_rst";
 				regulator-min-microvolt = <3300000>;
 				regulator-max-microvolt = <3300000>;
@@ -95,17 +97,17 @@
 				brcm,function = <BCM2835_FSEL_GPIO_OUT>;
 				brcm,pull     = <BCM2835_PUD_OFF>;
 			};
-			eth2_int_pins {
+			eth2_int_pins: eth2_int_pins {
 				brcm,pins     = <8>;
 				brcm,function = <BCM2835_FSEL_GPIO_IN>;
 				brcm,pull     = <BCM2835_PUD_OFF>;
 			};
-			eth2_reset_pins {
+			eth2_reset_pins: eth2_reset_pins {
 				brcm,pins     = <40>;
 				brcm,function = <BCM2835_FSEL_GPIO_OUT>;
 				brcm,pull     = <BCM2835_PUD_OFF>;
 			};
-			conbridge_int_pins {
+			conbridge_int_pins: conbridge_int_pins {
 				brcm,pins     = <28>;
 				brcm,function = <BCM2835_FSEL_GPIO_IN>;
 				brcm,pull     = <BCM2835_PUD_OFF>;
@@ -171,6 +173,8 @@
 			pileft: ethernet@1 {
 				/* PiBridge Ethernet left */
 				compatible = "micrel,ks8851";
+				pinctrl-names = "default";
+				pinctrl-0 = <&eth2_int_pins>;
 				reg = <1>;
 				spi-max-frequency = <10000000>;	/* <= 40 MHz */
 				interrupt-parent = <&gpio>;
