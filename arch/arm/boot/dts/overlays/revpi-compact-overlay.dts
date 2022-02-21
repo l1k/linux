@@ -37,6 +37,8 @@
 
 			ain_mux: ain_mux {
 				compatible = "gpio-mux";
+				pinctrl-names = "default";
+				pinctrl-0 = <&ain_mux_pins>;
 				#mux-control-cells = <0>;
 				mux-gpios = <&gpio  6 GPIO_ACTIVE_HIGH>,
 					    <&gpio 12 GPIO_ACTIVE_HIGH>,
@@ -67,6 +69,8 @@
 
 			leds {
 				compatible = "gpio-leds";
+				pinctrl-names = "default";
+				pinctrl-0 = <&leds_pins>;
 				power_red {
 					gpios = <&gpio 35 GPIO_ACTIVE_HIGH>;
 					linux,default-trigger = "power_red";
@@ -103,7 +107,7 @@
 				brcm,function = <BCM2835_FSEL_GPIO_OUT>;
 				brcm,pull     = <BCM2835_PUD_OFF>;
 			};
-			eth1_int_pins {
+			eth1_int_pins: eth1_int_pins {
 				brcm,pins     = <18>;
 				brcm,function = <BCM2835_FSEL_GPIO_IN>;
 				brcm,pull     = <BCM2835_PUD_OFF>;
@@ -120,7 +124,7 @@
 				brcm,function = <BCM2835_FSEL_GPIO_OUT>;
 				brcm,pull     = <BCM2835_PUD_OFF>;
 			};
-			ain_mux_pins {
+			ain_mux_pins: ain_mux_pins {
 				/* sw_a0 sw_a1 sw_a2 cu_sw_en */
 				brcm,pins     = <6 12 13 16>;
 				brcm,function = <BCM2835_FSEL_GPIO_OUT>;
@@ -140,7 +144,7 @@
 						 BCM2835_FSEL_GPIO_IN>;
 				brcm,pull     = <BCM2835_PUD_OFF>;
 			};
-			leds_pins {
+			leds_pins: leds_pins {
 				/* power_red a1_green a1_red a2_green a2_red */
 				brcm,pins     = <35 30 34 32 33>;
 				brcm,function = <BCM2835_FSEL_GPIO_OUT>;
@@ -203,6 +207,8 @@
 
 			eth1: ethernet@2 {
 				compatible = "micrel,ks8851";
+				pinctrl-names = "default";
+				pinctrl-0 = <&eth1_int_pins>;
 				reg = <2>;
 				/*
 				 * RevPi Compact achieved 28.5 MHz in the lab,
