@@ -36,6 +36,8 @@
 			*/
 			pb_rst: regulator_pbrst {
 				compatible = "regulator-fixed";
+				pinctrl-names = "default";
+				pinctrl-0 = <&eth1_2_reset_pins>;
 				regulator-name = "pb_rst";
 				regulator-min-microvolt = <3300000>;
 				regulator-max-microvolt = <3300000>;
@@ -89,7 +91,7 @@
 				brcm,function = <BCM2835_FSEL_GPIO_OUT>;
 				brcm,pull     = <BCM2835_PUD_OFF>;
 			};
-			eth1_2_reset_pins {
+			eth1_2_reset_pins: eth1_2_reset_pins {
 				/* resets both chips */
 				brcm,pins     = <40>;
 				brcm,function = <BCM2835_FSEL_GPIO_OUT>;
