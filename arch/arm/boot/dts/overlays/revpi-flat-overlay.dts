@@ -98,7 +98,8 @@
 
 			gpio-keys {
 				compatible = "gpio-keys";
-
+				pinctrl-names = "default";
+				pinctrl-0 = <&button_pins>;
 				user-event {
 					label = "User event key";
 					gpios = <&gpio 13 GPIO_ACTIVE_LOW>;
@@ -111,20 +112,23 @@
 	fragment@1 {
 		target = <&gpio>;
 		__overlay__ {
+			pinctrl-names = "default";
+			pinctrl-0 = <&relais_pins>;
+
 			spi0_cs_pins {
 				/* aout ain mbus tpm */
 				brcm,pins     = <8 7 6 30>;
 				brcm,function = <BCM2835_FSEL_GPIO_OUT>;
 				brcm,pull     = <BCM2835_PUD_OFF>;
 			};
-			tpm_pins {
-				/* irq reset */
+			tpm_pins: tpm_pins {
+				/* reset irq */
 				brcm,pins     = <0 1>;
 				brcm,function = <BCM2835_FSEL_GPIO_OUT
 						 BCM2835_FSEL_GPIO_IN>;
 				brcm,pull     = <BCM2835_PUD_OFF>;
 			};
-			mbus_pins {
+			mbus_pins: mbus_pins {
 				/* irq */
 				brcm,pins     = <21>;
 				brcm,function = <BCM2835_FSEL_GPIO_IN>;
@@ -136,12 +140,12 @@
 				brcm,function = <BCM2835_FSEL_GPIO_OUT>;
 				brcm,pull     = <BCM2835_PUD_OFF>;
 			};
-			button_pins {
+			button_pins: button_pins {
 				brcm,pins     = <13>;
 				brcm,function = <BCM2835_FSEL_GPIO_IN>;
 				brcm,pull     = <BCM2835_PUD_OFF>;
 			};
-			relais_pins {
+			relais_pins: relais_pins {
 				brcm,pins     = <19>;
 				brcm,function = <BCM2835_FSEL_GPIO_OUT>;
 				brcm,pull     = <BCM2835_PUD_OFF>;
@@ -239,6 +243,8 @@
 
 			mbus: rf@2 {
 				compatible = "spidev", "ti,cc1101";
+				pinctrl-names = "default";
+				pinctrl-0 = <&mbus_pins>;
 				reg = <2>;
 				spi-max-frequency = <5000000>; /* <= 6.5 MHz */
 				interrupt-parent = <&gpio>;
@@ -249,6 +255,8 @@
 
 			tpm: tpm@3 {
 				compatible = "infineon,slb9670";
+				pinctrl-names = "default";
+				pinctrl-0 = <&tpm_pins>;
 				reg = <3>;
 				spi-max-frequency = <1000000>;	/* <= 43 MHz */
 				interrupt-parent = <&gpio>;
