@@ -45,8 +45,8 @@
  *
  * [1] https://trustedcomputinggroup.org/resource/pc-client-platform-tpm-profile-ptp-specification/
  */
-static int tpm_tis_spi_flow_control(struct tpm_tis_spi_phy *phy,
-				    struct spi_transfer *spi_xfer)
+int tpm_tis_spi_flow_control(struct tpm_tis_spi_phy *phy,
+			     struct spi_transfer *spi_xfer)
 {
 	struct spi_message m;
 	int ret, i;
@@ -140,14 +140,14 @@ exit:
 	return ret;
 }
 
-static int tpm_tis_spi_read_bytes(struct tpm_tis_data *data, u32 addr,
-				  u16 len, u8 *result)
+int tpm_tis_spi_read_bytes(struct tpm_tis_data *data, u32 addr, u16 len,
+			   u8 *result)
 {
 	return tpm_tis_spi_transfer(data, addr, len, result, NULL);
 }
 
-static int tpm_tis_spi_write_bytes(struct tpm_tis_data *data, u32 addr,
-				   u16 len, const u8 *value)
+int tpm_tis_spi_write_bytes(struct tpm_tis_data *data, u32 addr, u16 len,
+			    const u8 *value)
 {
 	return tpm_tis_spi_transfer(data, addr, len, NULL, value);
 }

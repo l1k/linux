@@ -25,6 +25,9 @@ static inline struct tpm_tis_spi_phy *to_tpm_tis_spi_phy(struct tpm_tis_data *da
 	return container_of(data, struct tpm_tis_spi_phy, priv);
 }
 
+extern int tpm_tis_spi_flow_control(struct tpm_tis_spi_phy *phy,
+				    struct spi_transfer *spi_xfer);
+
 extern int tpm_tis_spi_init(struct spi_device *spi, struct tpm_tis_spi_phy *phy,
 			    int irq, const struct tpm_tis_phy_ops *phy_ops);
 
@@ -34,6 +37,10 @@ extern int tpm_tis_spi_transfer(struct tpm_tis_data *data, u32 addr, u16 len,
 extern int tpm_tis_spi_read16(struct tpm_tis_data *data, u32 addr, u16 *result);
 extern int tpm_tis_spi_read32(struct tpm_tis_data *data, u32 addr, u32 *result);
 extern int tpm_tis_spi_write32(struct tpm_tis_data *data, u32 addr, u32 value);
+extern int tpm_tis_spi_read_bytes(struct tpm_tis_data *data, u32 addr, u16 len,
+				  u8 *result);
+extern int tpm_tis_spi_write_bytes(struct tpm_tis_data *data, u32 addr, u16 len,
+				   const u8 *value);
 
 #ifdef CONFIG_TCG_TIS_SPI_CR50
 extern int cr50_spi_probe(struct spi_device *spi);
