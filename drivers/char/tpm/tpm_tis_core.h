@@ -105,6 +105,8 @@ struct tpm_tis_data {
 };
 
 struct tpm_tis_phy_ops {
+	int (*set_reset) (struct tpm_tis_data *data);
+	int (*unset_reset) (struct tpm_tis_data *data);
 	int (*read_bytes)(struct tpm_tis_data *data, u32 addr, u16 len,
 			  u8 *result);
 	int (*write_bytes)(struct tpm_tis_data *data, u32 addr, u16 len,

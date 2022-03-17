@@ -952,6 +952,9 @@ int tpm_tis_core_init(struct device *dev, struct tpm_tis_data *priv, int irq,
 
 	dev_set_drvdata(&chip->dev, priv);
 
+	if (priv->phy_ops->unset_reset)
+		priv->phy_ops->unset_reset(priv);
+
 	rc = tpm_tis_read32(priv, TPM_DID_VID(0), &vendor);
 	if (rc < 0)
 		return rc;

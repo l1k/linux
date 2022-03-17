@@ -24,6 +24,7 @@
 #include <linux/tpm_eventlog.h>
 #include <linux/hw_random.h>
 #include "tpm.h"
+#include "tpm_tis_core.h"
 
 DEFINE_IDR(dev_nums_idr);
 static DEFINE_MUTEX(idr_lock);
@@ -286,6 +287,7 @@ static void tpm_dev_release(struct device *dev)
 static int tpm_class_shutdown(struct device *dev)
 {
 	struct tpm_chip *chip = container_of(dev, struct tpm_chip, dev);
+	struct tpm_tis_data *priv = dev_get_drvdata(&chip->dev);
 
 	down_write(&chip->ops_sem);
 	if (chip->flags & TPM_CHIP_FLAG_TPM2) {
@@ -296,6 +298,9 @@ static int tpm_class_shutdown(struct device *dev)
 	}
 	chip->ops = NULL;
 	up_write(&chip->ops_sem);
+
+	if (priv->phy_ops->set_reset)
+		priv->phy_ops->set_reset(priv);
 
 	return 0;
 }
