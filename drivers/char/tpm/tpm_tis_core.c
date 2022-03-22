@@ -24,6 +24,7 @@
 #include <linux/wait.h>
 #include <linux/acpi.h>
 #include <linux/freezer.h>
+#include <linux/gpio/consumer.h>
 #include "tpm.h"
 #include "tpm_tis_core.h"
 
@@ -919,6 +920,21 @@ static const struct tpm_class_ops tpm_tis = {
 	.clk_enable = tpm_tis_clkrun_enable,
 };
 
+/*
+ * Retrieve the reset GPIO if it is defined.
+ */
+static int tpm_tis_get_reset_gpio(struct device *dev, struct tpm_tis_data *data)
+{
+	data->reset_gpio = devm_gpiod_get_optional(dev, "reset", GPIOD_OUT_LOW);
+	if (IS_ERR(data->reset_gpio))
+		return PTR_ERR(data->reset_gpio);
+
+	if (data->reset_gpio)
+		gpiod_set_consumer_name(data->reset_gpio, "TPM reset");
+
+	return 0;
+}
+
 int tpm_tis_core_init(struct device *dev, struct tpm_tis_data *priv, int irq,
 		      const struct tpm_tis_phy_ops *phy_ops,
 		      acpi_handle acpi_dev_handle)
@@ -951,6 +967,10 @@ int tpm_tis_core_init(struct device *dev, struct tpm_tis_data *priv, int irq,
 	priv->phy_ops = phy_ops;
 
 	dev_set_drvdata(&chip->dev, priv);
+
+	rc = tpm_tis_get_reset_gpio(dev, priv);
+	if (rc)
+		return rc;
 
 	if (priv->phy_ops->unset_reset)
 		priv->phy_ops->unset_reset(priv);
