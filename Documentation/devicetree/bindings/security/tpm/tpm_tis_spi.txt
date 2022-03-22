@@ -8,6 +8,7 @@ Required properties:
 Optional SoC Specific Properties:
 - pinctrl-names: Contains only one value - "default".
 - pintctrl-0: Specifies the pin control groups used for this controller.
+- reset-gpios: Specifies the reset GPIO.
 
 Example (for ARM-based BeagleBoard xM with TPM_TIS on SPI4):
 
@@ -19,5 +20,6 @@ Example (for ARM-based BeagleBoard xM with TPM_TIS on SPI4):
                 compatible = "tcg,tpm_tis-spi";
 
                 spi-max-frequency = <10000000>;
+		reset-gpios = <&gpio 3 GPIO_ACTIVE_LOW>;
         };
 };
