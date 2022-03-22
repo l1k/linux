@@ -51,6 +51,8 @@ static inline int cr50_spi_probe(struct spi_device *spi)
 }
 #endif
 
+extern int slb9670_spi_probe(struct spi_device *spi);
+
 #if defined(CONFIG_PM_SLEEP) && defined(CONFIG_TCG_TIS_SPI_CR50)
 extern int tpm_tis_spi_resume(struct device *dev);
 #else

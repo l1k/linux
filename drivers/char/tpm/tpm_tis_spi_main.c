@@ -265,7 +265,7 @@ static int tpm_tis_spi_remove(struct spi_device *dev)
 
 static const struct spi_device_id tpm_tis_spi_id[] = {
 	{ "st33htpm-spi", (unsigned long)tpm_tis_spi_probe },
-	{ "slb9670", (unsigned long)tpm_tis_spi_probe },
+	{ "slb9670", (unsigned long)slb9670_spi_probe },
 	{ "tpm_tis_spi", (unsigned long)tpm_tis_spi_probe },
 	{ "tpm_tis-spi", (unsigned long)tpm_tis_spi_probe },
 	{ "cr50", (unsigned long)cr50_spi_probe },
@@ -275,7 +275,7 @@ MODULE_DEVICE_TABLE(spi, tpm_tis_spi_id);
 
 static const struct of_device_id of_tis_spi_match[] = {
 	{ .compatible = "st,st33htpm-spi", .data = tpm_tis_spi_probe },
-	{ .compatible = "infineon,slb9670", .data = tpm_tis_spi_probe },
+	{ .compatible = "infineon,slb9670", .data = slb9670_spi_probe },
 	{ .compatible = "tcg,tpm_tis-spi", .data = tpm_tis_spi_probe },
 	{ .compatible = "google,cr50", .data = cr50_spi_probe },
 	{}
