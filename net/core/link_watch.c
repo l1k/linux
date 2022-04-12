@@ -107,7 +107,8 @@ static void linkwatch_add_event(struct net_device *dev)
 	unsigned long flags;
 
 	spin_lock_irqsave(&lweventlist_lock, flags);
-	if (list_empty(&dev->link_watch_list)) {
+	if (list_empty(&dev->link_watch_list) &&
+	    dev->reg_state < NETREG_UNREGISTERED) {
 		list_add_tail(&dev->link_watch_list, &lweventlist);
 		dev_hold_track(dev, &dev->linkwatch_dev_tracker, GFP_ATOMIC);
 	}
@@ -247,13 +248,6 @@ void linkwatch_forget_dev(struct net_device *dev)
 	spin_unlock_irqrestore(&lweventlist_lock, flags);
 	if (clean)
 		linkwatch_do_dev(dev);
-}
-
-
-/* Must be called with the rtnl semaphore held */
-void linkwatch_run_queue(void)
-{
-	__linkwatch_run_queue(0);
 }
 
 

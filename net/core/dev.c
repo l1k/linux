@@ -9848,21 +9848,6 @@ static void netdev_wait_allrefs(struct net_device *dev)
 			call_netdevice_notifiers(NETDEV_UNREGISTER, dev);
 
 			__rtnl_unlock();
-			rcu_barrier();
-			rtnl_lock();
-
-			if (test_bit(__LINK_STATE_LINKWATCH_PENDING,
-				     &dev->state)) {
-				/* We must not have linkwatch events
-				 * pending on unregister. If this
-				 * happens, we simply run the queue
-				 * unscheduled, resulting in a noop
-				 * for this device.
-				 */
-				linkwatch_run_queue();
-			}
-
-			__rtnl_unlock();
 
 			rebroadcast_time = jiffies;
 		}
