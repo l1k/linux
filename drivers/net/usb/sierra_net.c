@@ -437,6 +437,9 @@ static void sierra_net_dosync(struct usbnet *dev)
 
 	dev_dbg(&dev->udev->dev, "%s", __func__);
 
+	if (!netif_device_present(dev->net))
+		return;
+
 	/* The SIERRA_NET_HIP_MSYNC_ID command appears to request that the
 	 * firmware restart itself.  After restarting, the modem will respond
 	 * with the SIERRA_NET_HIP_RESTART_ID indication.  The driver continues
@@ -563,6 +566,9 @@ static void sierra_net_kevent(struct work_struct *work)
 static void sierra_net_defer_kevent(struct usbnet *dev, int work)
 {
 	struct sierra_net_data *priv = sierra_net_get_private(dev);
+
+        if (!netif_device_present(dev->net))
+		return;
 
 	set_bit(work, &priv->kevent_flags);
 	schedule_work(&priv->sierra_net_kevent);
@@ -758,18 +764,12 @@ static void sierra_net_unbind(struct usbnet *dev, struct usb_interface *intf)
 
 	dev_dbg(&dev->udev->dev, "%s", __func__);
 
-	/* kill the timer and work */
-	del_timer_sync(&priv->sync_timer);
-	cancel_work_sync(&priv->sierra_net_kevent);
-
 	/* tell modem we are going away */
 	status = sierra_net_send_cmd(dev, priv->shdwn_msg,
 			sizeof(priv->shdwn_msg), "Shutdown");
 	if (status < 0)
 		netdev_err(dev->net,
 			"usb_control_msg failed, status %d\n", status);
-
-	usbnet_status_stop(dev);
 
 	sierra_net_set_private(dev, NULL);
 	kfree(priv);
@@ -935,6 +935,30 @@ sierra_net_probe(struct usb_interface *udev, const struct usb_device_id *prod)
 	return ret;
 }
 
+static void sierra_net_disconnect(struct usb_interface *intf)
+{
+	struct usbnet *dev = usb_get_intfdata(intf);
+	struct sierra_net_data *priv = sierra_net_get_private(dev);
+
+	/* Drop status reference acquired in sierra_net_probe(). */
+	usbnet_status_stop(dev);
+
+	/* Prevent netdev from being reopened and close it
+	 * to stop polling the Interrupt Endpoint's status.
+	 */
+	netif_device_detach(dev->net);
+	dev_close(dev->net);
+
+	/* Kill timer and work while netdev is still registered.
+	 * Need three calls because they schedule each other.
+	 */
+	del_timer_sync(&priv->sync_timer);
+	cancel_work_sync(&priv->sierra_net_kevent);
+	del_timer_sync(&priv->sync_timer);
+
+	usbnet_disconnect(intf);
+}
+
 #define DIRECT_IP_DEVICE(vend, prod) \
 	{USB_DEVICE_INTERFACE_NUMBER(vend, prod, 7), \
 	.driver_info = (unsigned long)&sierra_net_info_direct_ip}, \
@@ -958,7 +982,7 @@ static struct usb_driver sierra_net_driver = {
 	.name = "sierra_net",
 	.id_table = products,
 	.probe = sierra_net_probe,
-	.disconnect = usbnet_disconnect,
+	.disconnect = sierra_net_disconnect,
 	.suspend = usbnet_suspend,
 	.resume = usbnet_resume,
 	.no_dynamic_id = 1,
