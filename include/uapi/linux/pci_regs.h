@@ -24,10 +24,11 @@
 /*
  * Conventional PCI and PCI-X Mode 1 devices have 256 bytes of
  * configuration space.  PCI-X Mode 2 and PCIe devices have 4096 bytes of
- * configuration space.
+ * configuration space.  PCIe Root Complex Register Blocks have 4096 bytes.
  */
 #define PCI_CFG_SPACE_SIZE	256
 #define PCI_CFG_SPACE_EXP_SIZE	4096
+#define PCI_RCRB_SIZE		4096
 
 /*
  * Under PCI, each device has 256 bytes of configuration address space,
@@ -713,7 +714,7 @@
 #define PCI_EXT_CAP_ID_RCEC	0x07	/* Root Complex Event Collector */
 #define PCI_EXT_CAP_ID_MFVC	0x08	/* Multi-Function VC Capability */
 #define PCI_EXT_CAP_ID_VC9	0x09	/* same as _VC */
-#define PCI_EXT_CAP_ID_RCRB	0x0A	/* Root Complex RB? */
+#define PCI_EXT_CAP_ID_RCRB	0x0A	/* Root Complex Register Block */
 #define PCI_EXT_CAP_ID_VNDR	0x0B	/* Vendor-Specific */
 #define PCI_EXT_CAP_ID_CAC	0x0C	/* Config Access - obsolete */
 #define PCI_EXT_CAP_ID_ACS	0x0D	/* Access Control Services */

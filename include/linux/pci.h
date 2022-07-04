@@ -509,6 +509,9 @@ struct pci_dev {
 #ifdef CONFIG_PCI_P2PDMA
 	struct pci_p2pdma __rcu *p2pdma;
 #endif
+#ifdef CONFIG_PCIE_RCRB
+	void __iomem	*rcrb;		/* Root Complex Register Block */
+#endif
 	u16		acs_cap;	/* ACS Capability offset */
 	phys_addr_t	rom;		/* Physical address if not from BAR */
 	size_t		romlen;		/* Length if not from BAR */

@@ -526,6 +526,47 @@ u8 pci_bus_find_capability(struct pci_bus *bus, unsigned int devfn, int cap)
 }
 EXPORT_SYMBOL(pci_bus_find_capability);
 
+static u16 pci_find_next_ext_capability_in_rcrb(struct pci_dev *dev, u16 start,
+						u16 cap)
+{
+#ifdef CONFIG_PCIE_RCRB
+	u32 header;
+	int ttl;
+	u16 pos = PCI_RCRB_OFFSET;
+
+	if (!dev->rcrb)
+		return 0;
+
+	/* minimum 8 bytes per capability */
+	ttl = PCI_RCRB_SIZE / 8;
+
+	if (pci_addr_is_rcrb(dev, start))
+		pos = start;
+
+	pci_read_config_dword(dev, pos, &header);
+
+	/*
+	 * Absence of any Extended Capabilities is indicated by Capability ID
+	 * 0xffff and Next Capability Offset 0 (PCIe r6.0, sec 7.6.2).
+	 */
+	if (PCI_EXT_CAP_ID(header) == 0xffff && PCI_EXT_CAP_NEXT(header) == 0)
+		return 0;
+
+	while (ttl-- > 0) {
+		if (PCI_EXT_CAP_ID(header) == cap && pos != start)
+			return pos;
+
+		pos = PCI_EXT_CAP_NEXT(header);
+		if (!pos)
+			break;
+
+		pos |= PCI_RCRB_OFFSET;
+		pci_read_config_dword(dev, pos, &header);
+	}
+#endif
+	return 0;
+}
+
 /**
  * pci_find_next_ext_capability - Find an extended capability
  * @dev: PCI device to query
@@ -543,6 +584,9 @@ u16 pci_find_next_ext_capability(struct pci_dev *dev, u16 start, int cap)
 	int ttl;
 	u16 pos = PCI_CFG_SPACE_SIZE;
 
+	if (pci_addr_is_rcrb(dev, start))
+		return pci_find_next_ext_capability_in_rcrb(dev, start, cap);
+
 	/* minimum 8 bytes per capability */
 	ttl = (PCI_CFG_SPACE_EXP_SIZE - PCI_CFG_SPACE_SIZE) / 8;
 
@@ -556,11 +600,13 @@ u16 pci_find_next_ext_capability(struct pci_dev *dev, u16 start, int cap)
 		return 0;
 
 	/*
-	 * If we have no capabilities, this is indicated by cap ID,
-	 * cap version and next pointer all being 0.
+	 * Absence of any Extended Capabilities in Configuration Space
+	 * is indicated by Capability ID, Capability Version and Next
+	 * Capability Offset all being 0 (PCIe r6.0, sec 7.6.1).
+	 * However Extended Capabilities may still be present in the RCRB.
 	 */
 	if (header == 0)
-		return 0;
+		return pci_find_next_ext_capability_in_rcrb(dev, 0, cap);
 
 	while (ttl-- > 0) {
 		if (PCI_EXT_CAP_ID(header) == cap && pos != start)
@@ -574,7 +620,7 @@ u16 pci_find_next_ext_capability(struct pci_dev *dev, u16 start, int cap)
 			break;
 	}
 
-	return 0;
+	return pci_find_next_ext_capability_in_rcrb(dev, 0, cap);
 }
 EXPORT_SYMBOL_GPL(pci_find_next_ext_capability);
 

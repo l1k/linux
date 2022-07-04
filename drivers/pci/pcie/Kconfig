@@ -142,3 +142,10 @@ config PCIE_EDR
 	  the PCI Firmware Specification r3.2.  Enable this if you want to
 	  support hybrid DPC model which uses both firmware and OS to
 	  implement DPC.
+
+config PCIE_RCRB
+	bool "PCI Express Root Complex Register Block support"
+	help
+	  Support Extended Capabilities in the Root Complex Register Block
+	  (in addition to those in Configuration Space) on Root Ports and
+	  Root Complex integrated Endpoints.

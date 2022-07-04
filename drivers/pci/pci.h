@@ -776,4 +776,16 @@ static inline pci_power_t mid_pci_get_power_state(struct pci_dev *pdev)
 }
 #endif
 
+#define PCI_RCRB_OFFSET	(PCI_CFG_SPACE_EXP_SIZE)
+#define PCI_RCRB_MASK	(PCI_RCRB_SIZE - 1)
+
+#ifdef CONFIG_PCIE_RCRB
+static inline bool pci_addr_is_rcrb(const struct pci_dev *dev, u16 addr)
+{
+	return ((addr & ~PCI_RCRB_MASK) == PCI_RCRB_OFFSET) && dev->rcrb;
+}
+#else
+#define pci_addr_is_rcrb(dev, addr) (false)
+#endif
+
 #endif /* DRIVERS_PCI_H */

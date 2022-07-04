@@ -196,6 +196,51 @@ struct pci_ops *pci_bus_set_ops(struct pci_bus *bus, struct pci_ops *ops)
 EXPORT_SYMBOL(pci_bus_set_ops);
 
 /*
+ * Accessors for Extended Capabilities in the Root Complex Register Block
+ * of Root Ports and Root Complex integrated Endpoints (PCIe r6.0 sec 7.2.3)
+ */
+
+#ifdef CONFIG_PCIE_RCRB
+#define PCI_READ_RCRB(size, type, read) \
+static int pci_read_rcrb_##size				  \
+	(const struct pci_dev *dev, int where, type *val) \
+{							  \
+	*val = read(dev->rcrb + where);			  \
+	return PCIBIOS_SUCCESSFUL;			  \
+}
+
+#define PCI_WRITE_RCRB(size, type, write) \
+static int pci_write_rcrb_##size			  \
+	(const struct pci_dev *dev, int where, type val)  \
+{							  \
+	write(val, dev->rcrb + where);			  \
+	return PCIBIOS_SUCCESSFUL;			  \
+}
+#else
+#define PCI_READ_RCRB(size, type, read) \
+static int pci_read_rcrb_##size				  \
+	(const struct pci_dev *dev, int where, type *val) \
+{							  \
+	return PCIBIOS_SUCCESSFUL;			  \
+}
+
+#define PCI_WRITE_RCRB(size, type, write) \
+static int pci_write_rcrb_##size			  \
+	(const struct pci_dev *dev, int where, type val)  \
+{							  \
+	return PCIBIOS_SUCCESSFUL;			  \
+}
+#endif
+
+PCI_READ_RCRB(byte,  u8,  readb)
+PCI_READ_RCRB(word,  u16, readw)
+PCI_READ_RCRB(dword, u32, readl)
+
+PCI_WRITE_RCRB(byte,  u8,  writeb)
+PCI_WRITE_RCRB(word,  u16, writew)
+PCI_WRITE_RCRB(dword, u32, writel)
+
+/*
  * The following routines are to prevent the user from accessing PCI config
  * space when it's unsafe to do so.  Some devices require this during BIST and
  * we're required to prevent it during D-state transitions.
@@ -531,6 +576,8 @@ int pci_read_config_byte(const struct pci_dev *dev, int where, u8 *val)
 		PCI_SET_ERROR_RESPONSE(val);
 		return PCIBIOS_DEVICE_NOT_FOUND;
 	}
+	if (pci_addr_is_rcrb(dev, where))
+		return pci_read_rcrb_byte(dev, where & PCI_RCRB_MASK, val);
 	return pci_bus_read_config_byte(dev->bus, dev->devfn, where, val);
 }
 EXPORT_SYMBOL(pci_read_config_byte);
@@ -541,6 +588,8 @@ int pci_read_config_word(const struct pci_dev *dev, int where, u16 *val)
 		PCI_SET_ERROR_RESPONSE(val);
 		return PCIBIOS_DEVICE_NOT_FOUND;
 	}
+	if (pci_addr_is_rcrb(dev, where))
+		return pci_read_rcrb_word(dev, where & PCI_RCRB_MASK, val);
 	return pci_bus_read_config_word(dev->bus, dev->devfn, where, val);
 }
 EXPORT_SYMBOL(pci_read_config_word);
@@ -552,6 +601,8 @@ int pci_read_config_dword(const struct pci_dev *dev, int where,
 		PCI_SET_ERROR_RESPONSE(val);
 		return PCIBIOS_DEVICE_NOT_FOUND;
 	}
+	if (pci_addr_is_rcrb(dev, where))
+		return pci_read_rcrb_dword(dev, where & PCI_RCRB_MASK, val);
 	return pci_bus_read_config_dword(dev->bus, dev->devfn, where, val);
 }
 EXPORT_SYMBOL(pci_read_config_dword);
@@ -560,6 +611,8 @@ int pci_write_config_byte(const struct pci_dev *dev, int where, u8 val)
 {
 	if (pci_dev_is_disconnected(dev))
 		return PCIBIOS_DEVICE_NOT_FOUND;
+	if (pci_addr_is_rcrb(dev, where))
+		return pci_write_rcrb_byte(dev, where & PCI_RCRB_MASK, val);
 	return pci_bus_write_config_byte(dev->bus, dev->devfn, where, val);
 }
 EXPORT_SYMBOL(pci_write_config_byte);
@@ -568,6 +621,8 @@ int pci_write_config_word(const struct pci_dev *dev, int where, u16 val)
 {
 	if (pci_dev_is_disconnected(dev))
 		return PCIBIOS_DEVICE_NOT_FOUND;
+	if (pci_addr_is_rcrb(dev, where))
+		return pci_write_rcrb_word(dev, where & PCI_RCRB_MASK, val);
 	return pci_bus_write_config_word(dev->bus, dev->devfn, where, val);
 }
 EXPORT_SYMBOL(pci_write_config_word);
@@ -577,6 +632,8 @@ int pci_write_config_dword(const struct pci_dev *dev, int where,
 {
 	if (pci_dev_is_disconnected(dev))
 		return PCIBIOS_DEVICE_NOT_FOUND;
+	if (pci_addr_is_rcrb(dev, where))
+		return pci_write_rcrb_dword(dev, where & PCI_RCRB_MASK, val);
 	return pci_bus_write_config_dword(dev->bus, dev->devfn, where, val);
 }
 EXPORT_SYMBOL(pci_write_config_dword);
