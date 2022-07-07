@@ -788,4 +788,11 @@ static inline bool pci_addr_is_rcrb(const struct pci_dev *dev, u16 addr)
 #define pci_addr_is_rcrb(dev, addr) (false)
 #endif
 
+#if defined(CONFIG_PCIE_RCRB) && IS_ENABLED(CONFIG_CXL_ACPI)
+void acpi_pci_discover_rcrb(struct pci_dev *pdev);
+#else
+static inline void acpi_pci_discover_rcrb(struct pci_dev *pdev) { }
+#endif
+
+
 #endif /* DRIVERS_PCI_H */

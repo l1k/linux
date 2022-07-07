@@ -145,7 +145,10 @@ config PCIE_EDR
 
 config PCIE_RCRB
 	bool "PCI Express Root Complex Register Block support"
+	default CXL_ACPI
 	help
 	  Support Extended Capabilities in the Root Complex Register Block
 	  (in addition to those in Configuration Space) on Root Ports and
 	  Root Complex integrated Endpoints.
+
+	  Currently only needed on CXL 1.1 Upstream and Downstream Ports.

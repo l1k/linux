@@ -3,6 +3,13 @@
 #include <linux/module.h>
 #include "pci.h"
 
+static void pci_release_rcrb(struct pci_dev *dev)
+{
+#ifdef CONFIG_PCIE_RCRB
+	iounmap(dev->rcrb);
+#endif
+}
+
 static void pci_free_resources(struct pci_dev *dev)
 {
 	int i;
@@ -42,6 +49,7 @@ static void pci_destroy_dev(struct pci_dev *dev)
 	pcie_aspm_exit_link_state(dev);
 	pci_bridge_d3_update(dev);
 	pci_free_resources(dev);
+	pci_release_rcrb(dev);
 	put_device(&dev->dev);
 }
 

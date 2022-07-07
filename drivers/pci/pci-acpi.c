@@ -104,6 +104,56 @@ int acpi_get_rc_resources(struct device *dev, const char *hid, u16 segment,
 }
 #endif
 
+#if defined(CONFIG_PCIE_RCRB) && IS_ENABLED(CONFIG_CXL_ACPI)
+struct acpi_pci_chbs_context {
+	unsigned long long uid;
+	struct pci_dev *pdev;
+};
+
+static int acpi_pci_parse_chbs(union acpi_subtable_headers *header, void* arg,
+			       const unsigned long end)
+{
+	struct acpi_cedt_chbs *chbs = (struct acpi_cedt_chbs *)header;
+	struct acpi_pci_chbs_context *ctx = arg;
+
+	if (chbs->uid == ctx->uid &&
+	    chbs->cxl_version == 0 &&
+	    chbs->length >= PCI_RCRB_SIZE) {
+		ctx->pdev->rcrb = ioremap(chbs->base, PCI_RCRB_SIZE);
+		if (!ctx->pdev->rcrb)
+			pci_err(ctx->pdev, "can't ioremap RCRB at %#llx\n",
+				chbs->base);
+	}
+
+	return 0;
+}
+
+void acpi_pci_discover_rcrb(struct pci_dev *pdev)
+{
+	struct acpi_pci_chbs_context ctx;
+	acpi_handle host_bridge;
+	acpi_status status;
+
+	if (pdev->devfn || pdev->bus->parent)
+		return;
+
+	host_bridge = ACPI_HANDLE(pdev->bus->bridge);
+	if (!host_bridge)
+		return;
+
+	status = acpi_evaluate_integer(host_bridge, METHOD_NAME__UID, NULL,
+				       &ctx.uid);
+	if (ACPI_FAILURE(status)) {
+		if (status != AE_NOT_FOUND)
+			pci_err(pdev, "can't evaluate _UID: %u\n", status);
+		return;
+	}
+
+	ctx.pdev = pdev;
+	acpi_table_parse_cedt(ACPI_CEDT_TYPE_CHBS, acpi_pci_parse_chbs, &ctx);
+}
+#endif
+
 phys_addr_t acpi_pci_root_get_mcfg_addr(acpi_handle handle)
 {
 	acpi_status status = AE_NOT_EXIST;

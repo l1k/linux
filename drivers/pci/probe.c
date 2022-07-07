@@ -1620,6 +1620,21 @@ static void pci_set_removable(struct pci_dev *dev)
 		dev_set_removable(&dev->dev, DEVICE_REMOVABLE);
 }
 
+static void pci_discover_rcrb(struct pci_dev *dev)
+{
+	int pcie_type;
+
+	if (!pci_is_pcie(dev))
+		return;
+
+	pcie_type = pci_pcie_type(dev);
+	if (pcie_type != PCI_EXP_TYPE_ROOT_PORT &&
+	    pcie_type != PCI_EXP_TYPE_RC_END)
+		return;
+
+	acpi_pci_discover_rcrb(dev);
+}
+
 /**
  * pci_ext_cfg_is_aliased - Is ext config space just an alias of std config?
  * @dev: PCI device
@@ -1858,6 +1873,8 @@ int pci_setup_device(struct pci_dev *dev)
 
 	/* Need to have dev->class ready */
 	dev->cfg_size = pci_cfg_space_size(dev);
+
+	pci_discover_rcrb(dev);
 
 	/* Need to have dev->cfg_size ready */
 	set_pcie_thunderbolt(dev);
