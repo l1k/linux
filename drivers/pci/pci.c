@@ -534,8 +534,12 @@ static u16 pci_find_next_ext_capability_in_rcrb(struct pci_dev *dev, u16 start,
 	int ttl;
 	u16 pos = PCI_RCRB_OFFSET;
 
-	if (!dev->rcrb)
+	pci_info(dev, "%s cap %hx start %hx\n", __func__, cap, start);
+
+	if (!dev->rcrb) {
+		pci_info(dev, "%s cap %hx not found, no RCRB\n", __func__, cap);
 		return 0;
+	}
 
 	/* minimum 8 bytes per capability */
 	ttl = PCI_RCRB_SIZE / 8;
@@ -549,12 +553,16 @@ static u16 pci_find_next_ext_capability_in_rcrb(struct pci_dev *dev, u16 start,
 	 * Absence of any Extended Capabilities is indicated by Capability ID
 	 * 0xffff and Next Capability Offset 0 (PCIe r6.0, sec 7.6.2).
 	 */
-	if (PCI_EXT_CAP_ID(header) == 0xffff && PCI_EXT_CAP_NEXT(header) == 0)
+	if (PCI_EXT_CAP_ID(header) == 0xffff && PCI_EXT_CAP_NEXT(header) == 0) {
+		pci_info(dev, "%s cap %hx not found, RCRB empty\n", __func__, cap);
 		return 0;
+	}
 
 	while (ttl-- > 0) {
-		if (PCI_EXT_CAP_ID(header) == cap && pos != start)
+		if (PCI_EXT_CAP_ID(header) == cap && pos != start) {
+			pci_info(dev, "%s cap %hx found at %hx\n", __func__, cap, pos);
 			return pos;
+		}
 
 		pos = PCI_EXT_CAP_NEXT(header);
 		if (!pos)
@@ -564,6 +572,8 @@ static u16 pci_find_next_ext_capability_in_rcrb(struct pci_dev *dev, u16 start,
 		pci_read_config_dword(dev, pos, &header);
 	}
 #endif
+	pci_info(dev, "%s cap %hx not found\n", __func__, cap);
+
 	return 0;
 }
 
@@ -584,20 +594,28 @@ u16 pci_find_next_ext_capability(struct pci_dev *dev, u16 start, int cap)
 	int ttl;
 	u16 pos = PCI_CFG_SPACE_SIZE;
 
-	if (pci_addr_is_rcrb(dev, start))
+	if (pci_addr_is_rcrb(dev, start)) {
+		pci_info(dev, "%s cap %x start %hx is in RCRB\n", __func__, cap, start);
 		return pci_find_next_ext_capability_in_rcrb(dev, start, cap);
+	}
+
+	pci_info(dev, "%s cap %x start %hx\n", __func__, cap, start);
 
 	/* minimum 8 bytes per capability */
 	ttl = (PCI_CFG_SPACE_EXP_SIZE - PCI_CFG_SPACE_SIZE) / 8;
 
-	if (dev->cfg_size <= PCI_CFG_SPACE_SIZE)
+	if (dev->cfg_size <= PCI_CFG_SPACE_SIZE) {
+		pci_info(dev, "%s cap %x not found, dev->cfg_size <= PCI_CFG_SPACE_SIZE\n", __func__, cap);
 		return 0;
+	}
 
 	if (start)
 		pos = start;
 
-	if (pci_read_config_dword(dev, pos, &header) != PCIBIOS_SUCCESSFUL)
+	if (pci_read_config_dword(dev, pos, &header) != PCIBIOS_SUCCESSFUL) {
+		pci_info(dev, "%s cap %x not found, read error\n", __func__, cap);
 		return 0;
+	}
 
 	/*
 	 * Absence of any Extended Capabilities in Configuration Space
@@ -605,12 +623,16 @@ u16 pci_find_next_ext_capability(struct pci_dev *dev, u16 start, int cap)
 	 * Capability Offset all being 0 (PCIe r6.0, sec 7.6.1).
 	 * However Extended Capabilities may still be present in the RCRB.
 	 */
-	if (header == 0)
+	if (header == 0) {
+		pci_info(dev, "%s cap %x not found, config space empty, trying RCRB\n", __func__, cap);
 		return pci_find_next_ext_capability_in_rcrb(dev, 0, cap);
+	}
 
 	while (ttl-- > 0) {
-		if (PCI_EXT_CAP_ID(header) == cap && pos != start)
+		if (PCI_EXT_CAP_ID(header) == cap && pos != start) {
+			pci_info(dev, "%s cap %x found at %hx\n", __func__, cap, pos);
 			return pos;
+		}
 
 		pos = PCI_EXT_CAP_NEXT(header);
 		if (pos < PCI_CFG_SPACE_SIZE)
@@ -620,6 +642,7 @@ u16 pci_find_next_ext_capability(struct pci_dev *dev, u16 start, int cap)
 			break;
 	}
 
+	pci_info(dev, "%s cap %x not found in config space, trying RCRB\n", __func__, cap);
 	return pci_find_next_ext_capability_in_rcrb(dev, 0, cap);
 }
 EXPORT_SYMBOL_GPL(pci_find_next_ext_capability);
@@ -640,7 +663,16 @@ EXPORT_SYMBOL_GPL(pci_find_next_ext_capability);
  */
 u16 pci_find_ext_capability(struct pci_dev *dev, int cap)
 {
-	return pci_find_next_ext_capability(dev, 0, cap);
+	u16 pos;
+
+	pci_info(dev, "%s cap %x\n", __func__, cap);
+
+	pos = pci_find_next_ext_capability(dev, 0, cap);
+	pci_info(dev, "%s cap %x %s at %hx\n", __func__, cap, pos ? "found" : "not found", pos);
+	if (cap == PCI_EXT_CAP_ID_ACS)
+		dump_stack();
+
+	return pos;
 }
 EXPORT_SYMBOL_GPL(pci_find_ext_capability);
 
@@ -991,6 +1023,8 @@ static void pci_std_enable_acs(struct pci_dev *dev)
 	pci_read_config_word(dev, pos + PCI_ACS_CAP, &cap);
 	pci_read_config_word(dev, pos + PCI_ACS_CTRL, &ctrl);
 
+	pci_info(dev, "%s: pos=%x read PCI_ACS_CAP=%hx PCI_ACS_CTRL=%hx\n", __func__, pos, cap, ctrl);
+
 	/* Source Validation */
 	ctrl |= (cap & PCI_ACS_SV);
 
@@ -1008,6 +1042,7 @@ static void pci_std_enable_acs(struct pci_dev *dev)
 		ctrl |= (cap & PCI_ACS_TB);
 
 	pci_write_config_word(dev, pos + PCI_ACS_CTRL, ctrl);
+	pci_info(dev, "%s: pos=%x write PCI_ACS_CTRL=%hx\n", __func__, pos, ctrl);
 }
 
 /**
@@ -3718,6 +3753,7 @@ bool pci_acs_path_enabled(struct pci_dev *start,
 void pci_acs_init(struct pci_dev *dev)
 {
 	dev->acs_cap = pci_find_ext_capability(dev, PCI_EXT_CAP_ID_ACS);
+	pci_info(dev, "%s: acs_cap=%hx\n", __func__, dev->acs_cap);
 
 	/*
 	 * Attempt to enable ACS regardless of capability because some Root

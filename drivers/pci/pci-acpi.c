@@ -123,6 +123,8 @@ static int acpi_pci_parse_chbs(union acpi_subtable_headers *header, void* arg,
 		if (!ctx->pdev->rcrb)
 			pci_err(ctx->pdev, "can't ioremap RCRB at %#llx\n",
 				chbs->base);
+	} else {
+		pci_info(ctx->pdev, "%s: non-matching entry (uid %u != %llu, cxl_version %u != 0, length %llu != 4096)\n", __func__, chbs->uid, ctx->uid, chbs->cxl_version, chbs->length);
 	}
 
 	return 0;
@@ -134,12 +136,16 @@ void acpi_pci_discover_rcrb(struct pci_dev *pdev)
 	acpi_handle host_bridge;
 	acpi_status status;
 
-	if (pdev->devfn || pdev->bus->parent)
+	if (pdev->devfn || pdev->bus->parent) {
+		pci_info(pdev, "%s: bailing out, pdev->devfn=%u pdev->bus->parent=%px\n", __func__, pdev->devfn, pdev->bus->parent);
 		return;
+	}
 
 	host_bridge = ACPI_HANDLE(pdev->bus->bridge);
-	if (!host_bridge)
+	if (!host_bridge) {
+		pci_info(pdev, "%s: bailing out, no ACPI_HANDLE for pdev->bus->bridge=%s\n", __func__, dev_name(pdev->bus->bridge));
 		return;
+	}
 
 	status = acpi_evaluate_integer(host_bridge, METHOD_NAME__UID, NULL,
 				       &ctx.uid);
@@ -148,6 +154,8 @@ void acpi_pci_discover_rcrb(struct pci_dev *pdev)
 			pci_err(pdev, "can't evaluate _UID: %u\n", status);
 		return;
 	}
+
+	pci_info(pdev, "%s: %s _UID %llu\n", __func__, dev_name(pdev->bus->bridge), ctx.uid);
 
 	ctx.pdev = pdev;
 	acpi_table_parse_cedt(ACPI_CEDT_TYPE_CHBS, acpi_pci_parse_chbs, &ctx);

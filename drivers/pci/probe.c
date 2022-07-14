@@ -1624,15 +1624,25 @@ static void pci_discover_rcrb(struct pci_dev *dev)
 {
 	int pcie_type;
 
-	if (!pci_is_pcie(dev))
+	if (!pci_is_pcie(dev)) {
+		pci_info(dev, "%s: bailing out, not a PCIe device\n", __func__);
 		return;
+	}
 
 	pcie_type = pci_pcie_type(dev);
 	if (pcie_type != PCI_EXP_TYPE_ROOT_PORT &&
-	    pcie_type != PCI_EXP_TYPE_RC_END)
+	    pcie_type != PCI_EXP_TYPE_RC_END) {
+		pci_info(dev, "%s: bailing out, wrong pcie_type %d\n", __func__, pcie_type);
 		return;
+	}
 
 	acpi_pci_discover_rcrb(dev);
+
+#ifdef CONFIG_PCIE_RCRB
+	if (dev->rcrb)
+		print_hex_dump(KERN_INFO, "RCRB: ", DUMP_PREFIX_OFFSET,
+				16, 1, dev->rcrb, PCI_RCRB_SIZE, true);
+#endif
 }
 
 /**
