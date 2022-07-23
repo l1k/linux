@@ -322,6 +322,36 @@ static irqreturn_t dpc_irq(int irq, void *context)
 	return IRQ_HANDLED;
 }
 
+int pci_dpc_sw_trigger(struct pci_dev *pdev, bool probe)
+{
+	struct pci_host_bridge *host;
+	u16 cap, ctl;
+
+	if (probe) {
+		if (!pdev->dpc_cap)
+			return -ENOTTY;
+
+		host = pci_find_host_bridge(pdev->bus);
+		if (!host->native_dpc && !pcie_ports_dpc_native)
+			return -ENOTTY;
+
+		if (!pcie_aer_is_native(pdev))
+			return -ENOTTY;
+
+		pci_read_config_word(pdev, pdev->dpc_cap + PCI_EXP_DPC_CAP,
+				     &cap);
+		if (!(cap & PCI_EXP_DPC_CAP_SW_TRIGGER))
+			return -ENOTTY;
+
+		return 0;
+	}
+
+	pci_read_config_word(pdev, pdev->dpc_cap + PCI_EXP_DPC_CTL, &ctl);
+	ctl |= PCI_EXP_DPC_CTL_SW_TRIGGER;
+	pci_write_config_word(pdev, pdev->dpc_cap + PCI_EXP_DPC_CTL, ctl);
+	return 0;
+}
+
 void pci_dpc_init(struct pci_dev *pdev)
 {
 	u16 cap;

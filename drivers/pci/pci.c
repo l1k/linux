@@ -5326,6 +5326,7 @@ static const struct pci_reset_fn_method pci_reset_fn_methods[] = {
 	{ pci_af_flr, .name = "af_flr" },
 	{ pci_pm_reset, .name = "pm" },
 	{ pci_reset_bus_function, .name = "bus" },
+	{ pci_dpc_sw_trigger, .name = "dpc_sw_trigger" },
 };
 
 static ssize_t reset_method_show(struct device *dev,

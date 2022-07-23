@@ -424,11 +424,13 @@ void pci_dpc_init(struct pci_dev *pdev);
 void dpc_process_error(struct pci_dev *pdev);
 pci_ers_result_t dpc_reset_link(struct pci_dev *pdev);
 bool pci_dpc_recovered(struct pci_dev *pdev);
+int pci_dpc_sw_trigger(struct pci_dev *pdev, bool probe);
 #else
 static inline void pci_save_dpc_state(struct pci_dev *dev) {}
 static inline void pci_restore_dpc_state(struct pci_dev *dev) {}
 static inline void pci_dpc_init(struct pci_dev *pdev) {}
 static inline bool pci_dpc_recovered(struct pci_dev *pdev) { return false; }
+static inline int pci_dpc_sw_trigger(struct pci_dev *pdev, bool probe) { return -ENOTTY; }
 #endif
 
 #ifdef CONFIG_PCIEPORTBUS
