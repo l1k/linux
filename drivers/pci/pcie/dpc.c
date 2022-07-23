@@ -322,6 +322,69 @@ static irqreturn_t dpc_irq(int irq, void *context)
 	return IRQ_HANDLED;
 }
 
+static int pci_dpc_sw_trigger(struct pci_dev *pdev, bool probe)
+{
+	struct pci_host_bridge *host;
+	struct device *dev;
+	u16 cap, ctl;
+
+	if (probe) {
+		if (!pdev->dpc_cap)
+			return -ENOTTY;
+
+		host = pci_find_host_bridge(pdev->bus);
+		if (!host->native_dpc && !pcie_ports_dpc_native)
+			return -ENOTTY;
+
+		if (!pcie_aer_is_native(pdev))
+			return -ENOTTY;
+
+		pci_read_config_word(pdev, pdev->dpc_cap + PCI_EXP_DPC_CAP,
+				     &cap);
+		if (!(cap & PCI_EXP_DPC_CAP_SW_TRIGGER))
+			return -ENOTTY;
+
+		return 0;
+	}
+
+	pci_read_config_word(pdev, pdev->dpc_cap + PCI_EXP_DPC_CTL, &ctl);
+	ctl |= PCI_EXP_DPC_CTL_SW_TRIGGER;
+	pci_write_config_word(pdev, pdev->dpc_cap + PCI_EXP_DPC_CTL, ctl);
+
+	dev = pcie_port_find_device(pdev, PCIE_PORT_SERVICE_DPC);
+	if (dev)
+		synchronize_irq(to_pcie_device(dev)->irq);
+
+	return 0;
+}
+
+int pci_dpc_sw_trigger_parent(struct pci_dev *pdev, bool probe)
+{
+	if (probe) {
+		/*
+		 * Reset must only affect @pdev, so bail out if it has siblings
+		 * or descendants.  Need to differentiate whether @pdev has
+		 * already been added to the bus list or not:
+		 */
+		if (list_empty(&pdev->bus_list) &&
+		    !list_empty(&pdev->bus->devices))
+			return -ENOTTY;
+
+		if (!list_empty(&pdev->bus_list) &&
+		    !list_is_singular(&pdev->bus->devices))
+			return -ENOTTY;
+
+		if (pdev->subordinate &&
+		    !list_empty(&pdev->subordinate->devices))
+			return -ENOTTY;
+
+		if (!pdev->bus->self)
+			return -ENOTTY;
+	}
+
+	return pci_dpc_sw_trigger(pdev->bus->self, probe);
+}
+
 void pci_dpc_init(struct pci_dev *pdev)
 {
 	u16 cap;
