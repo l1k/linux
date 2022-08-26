@@ -1053,8 +1053,18 @@ struct controller *pcie_init(struct pcie_device *dev)
 		pdev->broken_cmd_compl ? " (with Cmd Compl erratum)" : "");
 
 	/*
-	 * If empty slot's power status is on, turn power off.  The IRQ isn't
-	 * requested yet, so avoid triggering a notification with this command.
+	 * Initialize Power and Attention Indicators in case firmware hasn't.
+	 *
+	 * The IRQ isn't requested yet, so avoid triggering a notification
+	 * with this command.
+	 */
+	pcie_disable_notification(ctrl);
+	poweron = ctrl->state == ON_STATE ? PCI_EXP_SLTCTL_PWR_IND_ON
+					  : PCI_EXP_SLTCTL_PWR_IND_OFF;
+	pciehp_set_indicators(ctrl, poweron, PCI_EXP_SLTCTL_ATTN_IND_OFF);
+
+	/*
+	 * If empty slot's power status is on, turn power off.
 	 *
 	 * If a child device was enumerated even though power is off,
 	 * the slot's claim to have a Power Controller is incorrect.
@@ -1062,7 +1072,6 @@ struct controller *pcie_init(struct pcie_device *dev)
 	if (POWER_CTRL(ctrl)) {
 		pciehp_get_power_status(ctrl, &poweron);
 		if (!pciehp_card_present_or_link_active(ctrl) && poweron) {
-			pcie_disable_notification(ctrl);
 			pciehp_power_off_slot(ctrl);
 		} else if (ctrl->state == ON_STATE && !poweron) {
 			ctrl->slot_cap &= ~PCI_EXP_SLTCAP_PCP;
