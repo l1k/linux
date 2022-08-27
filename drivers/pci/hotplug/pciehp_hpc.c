@@ -1055,12 +1055,20 @@ struct controller *pcie_init(struct pcie_device *dev)
 	/*
 	 * If empty slot's power status is on, turn power off.  The IRQ isn't
 	 * requested yet, so avoid triggering a notification with this command.
+	 *
+	 * If a child device was enumerated even though power is off,
+	 * the slot's claim to have a Power Controller is incorrect.
 	 */
 	if (POWER_CTRL(ctrl)) {
 		pciehp_get_power_status(ctrl, &poweron);
 		if (!pciehp_card_present_or_link_active(ctrl) && poweron) {
 			pcie_disable_notification(ctrl);
 			pciehp_power_off_slot(ctrl);
+		} else if (ctrl->state == ON_STATE && !poweron) {
+			ctrl->slot_cap &= ~PCI_EXP_SLTCAP_PCP;
+			ctrl_err(ctrl, "Slot(%s): " FW_BUG
+				 "Power Controller Present bit incorrect\n",
+				 slot_name(ctrl));
 		}
 	}
 
