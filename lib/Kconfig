@@ -759,3 +759,9 @@ config ASN1_ENCODER
 
 config POLYNOMIAL
        tristate
+
+config SPDM
+	tristate
+	select KEYS
+	select ASN1_ENCODER
+	select ASYMMETRIC_KEY_TYPE
