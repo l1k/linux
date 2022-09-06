@@ -787,6 +787,12 @@ static inline void pci_doe_stop(struct pci_dev *pdev) { }
 static inline void pci_doe_destroy(struct pci_dev *pdev) { }
 #endif
 
+#ifdef CONFIG_PCI_CMA
+void pci_cma_init(struct pci_dev *pdev);
+#else
+static inline void pci_cma_init(struct pci_dev *pdev) { }
+#endif
+
 /*
  * Config Address for PCI Configuration Mechanism #1
  *
