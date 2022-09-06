@@ -785,3 +785,19 @@ config POLYNOMIAL
 
 config FIRMWARE_TABLE
 	bool
+
+config SPDM_REQUESTER
+	tristate
+	select CRYPTO
+	select KEYS
+	select ASYMMETRIC_KEY_TYPE
+	select ASYMMETRIC_PUBLIC_KEY_SUBTYPE
+	select X509_CERTIFICATE_PARSER
+	help
+	  The Security Protocol and Data Model (SPDM) allows for device
+	  authentication, measurement, key exchange and encrypted sessions.
+	  This option enables support for the SPDM requester role.
+
+	  Crypto algorithms offered to SPDM responders are limited to those
+	  enabled in .config.  Drivers selecting SPDM_REQUESTER need to also
+	  select any algorithms they deem mandatory.
