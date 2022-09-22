@@ -473,6 +473,7 @@ struct pci_dev {
 
 #ifdef CONFIG_HOTPLUG_PCI_PCIE
 	unsigned int	broken_cmd_compl:1;	/* No compl for some cmds */
+	unsigned int	broken_link_change:1;	/* Spurious DLLSC events */
 #endif
 #ifdef CONFIG_PCIE_PTM
 	unsigned int	ptm_root:1;

@@ -787,7 +787,7 @@ static int pciehp_poll(void *data)
 
 static void pcie_enable_notification(struct controller *ctrl)
 {
-	u16 cmd, mask;
+	u16 cmd = 0, mask;
 
 	/*
 	 * TBD: Power fault detected software notification support.
@@ -801,11 +801,13 @@ static void pcie_enable_notification(struct controller *ctrl)
 	 */
 
 	/*
-	 * Always enable link events: thus link-up and link-down shall
+	 * Enable link events if supported: Thus link-up and link-down shall
 	 * always be treated as hotplug and unplug respectively. Enable
 	 * presence detect only if Attention Button is not present.
 	 */
-	cmd = PCI_EXP_SLTCTL_DLLSCE;
+	if (ctrl_dev(ctrl)->link_active_reporting &&
+	    !ctrl_dev(ctrl)->broken_link_change)
+		cmd |= PCI_EXP_SLTCTL_DLLSCE;
 	if (ATTN_BUTTN(ctrl))
 		cmd |= PCI_EXP_SLTCTL_ABPE;
 	else
@@ -844,9 +846,12 @@ void pcie_clear_hotplug_events(struct controller *ctrl)
 
 void pcie_enable_interrupt(struct controller *ctrl)
 {
-	u16 mask;
+	u16 mask = PCI_EXP_SLTCTL_HPIE;
 
-	mask = PCI_EXP_SLTCTL_HPIE | PCI_EXP_SLTCTL_DLLSCE;
+	if (ctrl_dev(ctrl)->link_active_reporting &&
+	    !ctrl_dev(ctrl)->broken_link_change)
+		mask |= PCI_EXP_SLTCTL_DLLSCE;
+
 	pcie_write_cmd(ctrl, mask, mask);
 }
 
@@ -915,8 +920,11 @@ int pciehp_reset_slot(struct hotplug_slot *hotplug_slot, bool probe)
 		ctrl_mask |= PCI_EXP_SLTCTL_PDCE;
 		stat_mask |= PCI_EXP_SLTSTA_PDC;
 	}
-	ctrl_mask |= PCI_EXP_SLTCTL_DLLSCE;
-	stat_mask |= PCI_EXP_SLTSTA_DLLSC;
+
+	if (pdev->link_active_reporting && !pdev->broken_link_change) {
+		ctrl_mask |= PCI_EXP_SLTCTL_DLLSCE;
+		stat_mask |= PCI_EXP_SLTSTA_DLLSC;
+	}
 
 	pcie_write_cmd(ctrl, 0, ctrl_mask);
 	ctrl_dbg(ctrl, "%s: SLOTCTRL %x write cmd %x\n", __func__,
@@ -1094,3 +1102,34 @@ DECLARE_PCI_FIXUP_CLASS_EARLY(PCI_VENDOR_ID_QCOM, 0x0401,
 			      PCI_CLASS_BRIDGE_PCI, 8, quirk_cmd_compl);
 DECLARE_PCI_FIXUP_CLASS_EARLY(PCI_VENDOR_ID_HXT, 0x0401,
 			      PCI_CLASS_BRIDGE_PCI, 8, quirk_cmd_compl);
+
+/*
+ * PLX PEX 8747 switches (rev ba) are known to signal a spurious DLLSC event
+ * on a port if a card is hotplugged into its sibling port.
+ */
+static void quirk_link_change(struct pci_dev *pdev)
+{
+	pdev->broken_link_change = 1;
+}
+DECLARE_PCI_FIXUP_CLASS_EARLY(PCI_VENDOR_ID_PLX, 0x8747,
+			      PCI_CLASS_BRIDGE_PCI, 8, quirk_link_change);
+
+/*
+ * Intel P5608 NVMe SSDs can be plugged into an x8 port and bifurcated as x4x4,
+ * thus appearing as two separate hotplug slots and SSDs.  When bringing down
+ * the first slot and then the second, the first slot will see one genuine and
+ * one spurious DLLSC event.  The spurious event occurs upon bringdown of the
+ * sibling (second) slot.
+ */
+static void quirk_link_change_nvme(struct pci_dev *pdev)
+{
+	if (pdev->subsystem_vendor == PCI_VENDOR_ID_SUN) {
+		switch (pdev->subsystem_device) {
+		/* P5608 */
+		case 0x487d:
+		case 0x488d:
+			quirk_link_change(pci_upstream_bridge(pdev));
+		}
+	}
+}
+DECLARE_PCI_FIXUP_EARLY(PCI_VENDOR_ID_INTEL, 0x0b60, quirk_link_change_nvme);
