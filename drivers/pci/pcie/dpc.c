@@ -329,20 +329,28 @@ static int pci_dpc_sw_trigger(struct pci_dev *pdev, bool probe)
 	u16 cap, ctl;
 
 	if (probe) {
-		if (!pdev->dpc_cap)
+		if (!pdev->dpc_cap) {
+			pci_info(pdev, "%s: !pdev->dpc_cap\n", __func__);
 			return -ENOTTY;
+		}
 
 		host = pci_find_host_bridge(pdev->bus);
-		if (!host->native_dpc && !pcie_ports_dpc_native)
+		if (!host->native_dpc && !pcie_ports_dpc_native) {
+			pci_info(pdev, "%s: !host->native_dpc && !pcie_ports_dpc_native\n", __func__);
 			return -ENOTTY;
+		}
 
-		if (!pcie_aer_is_native(pdev))
+		if (!pcie_aer_is_native(pdev)) {
+			pci_info(pdev, "%s: !pcie_aer_is_native(pdev)\n", __func__);
 			return -ENOTTY;
+		}
 
 		pci_read_config_word(pdev, pdev->dpc_cap + PCI_EXP_DPC_CAP,
 				     &cap);
-		if (!(cap & PCI_EXP_DPC_CAP_SW_TRIGGER))
+		if (!(cap & PCI_EXP_DPC_CAP_SW_TRIGGER)) {
+			pci_info(pdev, "%s: PCI_EXP_DPC_CAP_SW_TRIGGER not set\n", __func__);
 			return -ENOTTY;
+		}
 
 		return 0;
 	}
@@ -367,19 +375,27 @@ int pci_dpc_sw_trigger_parent(struct pci_dev *pdev, bool probe)
 		 * already been added to the bus list or not:
 		 */
 		if (list_empty(&pdev->bus_list) &&
-		    !list_empty(&pdev->bus->devices))
-			return -ENOTTY;
+		    !list_empty(&pdev->bus->devices)) {
+			pci_info(pdev, "%s: not yet added to bus list and bus list not empty -- ignoring \n", __func__);
+			/* return -ENOTTY; */
+		}
 
 		if (!list_empty(&pdev->bus_list) &&
-		    !list_is_singular(&pdev->bus->devices))
-			return -ENOTTY;
+		    !list_is_singular(&pdev->bus->devices)) {
+			pci_info(pdev, "%s: already added to bus list and bus list not singular -- ignoring\n", __func__);
+			/* return -ENOTTY; */
+		}
 
 		if (pdev->subordinate &&
-		    !list_empty(&pdev->subordinate->devices))
-			return -ENOTTY;
+		    !list_empty(&pdev->subordinate->devices)) {
+			pci_info(pdev, "%s: descendants present -- ignoring\n", __func__);
+			/* return -ENOTTY; */
+		}
 
-		if (!pdev->bus->self)
+		if (!pdev->bus->self) {
+			pci_info(pdev, "%s: no upstream bridge present\n", __func__);
 			return -ENOTTY;
+		}
 	}
 
 	return pci_dpc_sw_trigger(pdev->bus->self, probe);

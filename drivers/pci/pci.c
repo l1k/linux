@@ -4664,11 +4664,15 @@ EXPORT_SYMBOL_GPL(pcie_flr);
  */
 int pcie_reset_flr(struct pci_dev *dev, bool probe)
 {
-	if (dev->dev_flags & PCI_DEV_FLAGS_NO_FLR_RESET)
+	if (dev->dev_flags & PCI_DEV_FLAGS_NO_FLR_RESET) {
+		pci_info(dev, "%s: PCI_DEV_FLAGS_NO_FLR_RESET is set\n", __func__);
 		return -ENOTTY;
+	}
 
-	if (!(dev->devcap & PCI_EXP_DEVCAP_FLR))
+	if (!(dev->devcap & PCI_EXP_DEVCAP_FLR)) {
+		pci_info(dev, "%s: PCI_EXP_DEVCAP_FLR is not set\n", __func__);
 		return -ENOTTY;
+	}
 
 	if (probe)
 		return 0;
@@ -4683,15 +4687,21 @@ static int pci_af_flr(struct pci_dev *dev, bool probe)
 	u8 cap;
 
 	pos = pci_find_capability(dev, PCI_CAP_ID_AF);
-	if (!pos)
+	if (!pos) {
+		pci_info(dev, "%s: no PCI_CAP_ID_AF capability\n", __func__);
 		return -ENOTTY;
+	}
 
-	if (dev->dev_flags & PCI_DEV_FLAGS_NO_FLR_RESET)
+	if (dev->dev_flags & PCI_DEV_FLAGS_NO_FLR_RESET) {
+		pci_info(dev, "%s: PCI_DEV_FLAGS_NO_FLR_RESET is set\n", __func__);
 		return -ENOTTY;
+	}
 
 	pci_read_config_byte(dev, pos + PCI_AF_CAP, &cap);
-	if (!(cap & PCI_AF_CAP_TP) || !(cap & PCI_AF_CAP_FLR))
+	if (!(cap & PCI_AF_CAP_TP) || !(cap & PCI_AF_CAP_FLR)) {
+		pci_info(dev, "%s: !(cap & PCI_AF_CAP_TP)=%d || !(cap & PCI_AF_CAP_FLR)=%d\n", __func__, !(cap & PCI_AF_CAP_TP),!(cap & PCI_AF_CAP_FLR));
 		return -ENOTTY;
+	}
 
 	if (probe)
 		return 0;
@@ -4740,12 +4750,16 @@ static int pci_pm_reset(struct pci_dev *dev, bool probe)
 {
 	u16 csr;
 
-	if (!dev->pm_cap || dev->dev_flags & PCI_DEV_FLAGS_NO_PM_RESET)
+	if (!dev->pm_cap || dev->dev_flags & PCI_DEV_FLAGS_NO_PM_RESET) {
+		pci_info(dev, "%s: !dev->pm_cap=%d || dev->dev_flags & PCI_DEV_FLAGS_NO_PM_RESET=%d\n", __func__, !dev->pm_cap, dev->dev_flags & PCI_DEV_FLAGS_NO_PM_RESET);
 		return -ENOTTY;
+	}
 
 	pci_read_config_word(dev, dev->pm_cap + PCI_PM_CTRL, &csr);
-	if (csr & PCI_PM_CTRL_NO_SOFT_RESET)
+	if (csr & PCI_PM_CTRL_NO_SOFT_RESET) {
+		pci_info(dev, "%s: PCI_PM_CTRL_NO_SOFT_RESET is set\n", __func__);
 		return -ENOTTY;
+	}
 
 	if (probe)
 		return 0;
@@ -4994,9 +5008,17 @@ static int pci_parent_bus_reset(struct pci_dev *dev, bool probe)
 {
 	struct pci_dev *pdev;
 
-	if (!list_is_singular(&dev->bus->devices) || dev->subordinate ||
-	    !dev->bus->self || dev->dev_flags & PCI_DEV_FLAGS_NO_BUS_RESET)
+	if (pci_is_root_bus(dev->bus) || dev->subordinate ||
+	    !dev->bus->self || dev->dev_flags & PCI_DEV_FLAGS_NO_BUS_RESET) {
+		pci_info(dev, "%s: pci_is_root_bus(dev->bus)=%d || dev->subordinate=%d || !dev->bus->self=%d || dev->dev_flags & PCI_DEV_FLAGS_NO_BUS_RESET=%d\n", __func__, pci_is_root_bus(dev->bus), !!dev->subordinate, !dev->bus->self, dev->dev_flags & PCI_DEV_FLAGS_NO_BUS_RESET);
 		return -ENOTTY;
+	}
+
+	list_for_each_entry(pdev, &dev->bus->devices, bus_list)
+		if (pdev != dev) {
+			pci_info(pdev, "%s: siblings present\n", __func__);
+			return -ENOTTY;
+		}
 
 	if (probe)
 		return 0;
@@ -5008,13 +5030,19 @@ static int pci_reset_hotplug_slot(struct hotplug_slot *hotplug, bool probe)
 {
 	int rc = -ENOTTY;
 
-	if (!hotplug || !try_module_get(hotplug->owner))
+	if (!hotplug || !try_module_get(hotplug->owner)) {
+		pr_info("%s: !hotplug || !try_module_get(hotplug->owner)\n", __func__);
 		return rc;
+	}
 
 	if (hotplug->ops->reset_slot)
 		rc = hotplug->ops->reset_slot(hotplug, probe);
 
 	module_put(hotplug->owner);
+
+	if (rc) {
+		pr_info("%s: hotplug->ops->reset_slot() returned %d\n", __func__, rc);
+	}
 
 	return rc;
 }
@@ -5022,8 +5050,11 @@ static int pci_reset_hotplug_slot(struct hotplug_slot *hotplug, bool probe)
 static int pci_dev_reset_slot_function(struct pci_dev *dev, bool probe)
 {
 	if (dev->multifunction || dev->subordinate || !dev->slot ||
-	    dev->dev_flags & PCI_DEV_FLAGS_NO_BUS_RESET)
+	    dev->dev_flags & PCI_DEV_FLAGS_NO_BUS_RESET) {
+		pci_info(dev, "%s: dev->multifunction=%d || dev->subordinate=%d || !dev->slot=%d || dev->dev_flags & PCI_DEV_FLAGS_NO_BUS_RESET=%d\n", __func__, dev->multifunction, !!dev->subordinate, !dev->slot, dev->dev_flags & PCI_DEV_FLAGS_NO_BUS_RESET);
+
 		return -ENOTTY;
+	}
 
 	return pci_reset_hotplug_slot(dev->slot->hotplug, probe);
 }
@@ -5319,6 +5350,7 @@ void pci_init_reset_methods(struct pci_dev *dev)
 	i = 0;
 	for (m = 1; m < PCI_NUM_RESET_METHODS; m++) {
 		rc = pci_reset_fn_methods[m].reset_fn(dev, PCI_RESET_PROBE);
+		pci_info(dev, "%s: pci_reset_fn_methods[%d].reset_fn() returned %d\n", __func__, m, rc);
 		if (!rc)
 			dev->reset_methods[i++] = m;
 		else if (rc != -ENOTTY)
@@ -5326,6 +5358,9 @@ void pci_init_reset_methods(struct pci_dev *dev)
 	}
 
 	dev->reset_methods[i] = 0;
+
+	for (i = 0; i < PCI_NUM_RESET_METHODS ; i++)
+		pci_info(dev, "%s: dev->reset_methods[%d] = %hhu\n", __func__, i, dev->reset_methods[i]);
 }
 
 /**

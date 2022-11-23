@@ -950,8 +950,10 @@ int pci_dev_acpi_reset(struct pci_dev *dev, bool probe)
 {
 	acpi_handle handle = ACPI_HANDLE(&dev->dev);
 
-	if (!handle || !acpi_has_method(handle, "_RST"))
+	if (!handle || !acpi_has_method(handle, "_RST")) {
+		pci_info(dev, "%s: !handle=%d || !acpi_has_method(handle, _RST)=%d\n", __func__, !handle, !acpi_has_method(handle, "_RST"));
 		return -ENOTTY;
+	}
 
 	if (probe)
 		return 0;
