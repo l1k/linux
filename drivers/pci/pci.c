@@ -4994,13 +4994,9 @@ static int pci_parent_bus_reset(struct pci_dev *dev, bool probe)
 {
 	struct pci_dev *pdev;
 
-	if (pci_is_root_bus(dev->bus) || dev->subordinate ||
+	if (!list_is_singular(&dev->bus->devices) || dev->subordinate ||
 	    !dev->bus->self || dev->dev_flags & PCI_DEV_FLAGS_NO_BUS_RESET)
 		return -ENOTTY;
-
-	list_for_each_entry(pdev, &dev->bus->devices, bus_list)
-		if (pdev != dev)
-			return -ENOTTY;
 
 	if (probe)
 		return 0;
