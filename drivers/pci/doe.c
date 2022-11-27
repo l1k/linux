@@ -76,13 +76,6 @@ struct pci_doe_protocol {
  * @private: Private data for the consumer
  * @work: Used internally by the mailbox
  * @doe_mb: Used internally by the mailbox
- *
- * The payload sizes and rv are specified in bytes with the following
- * restrictions concerning the protocol.
- *
- *	1) The request_pl_sz must be a multiple of double words (4 bytes)
- *	2) The response_pl_sz must be >= a single double word (4 bytes)
- *	3) rv is returned as bytes but it will be a multiple of double words
  */
 struct pci_doe_task {
 	struct pci_doe_protocol prot;
@@ -153,7 +146,7 @@ static int pci_doe_send_req(struct pci_doe_mb *doe_mb,
 {
 	struct pci_dev *pdev = doe_mb->pdev;
 	int offset = doe_mb->cap_offset;
-	size_t length;
+	size_t length, remainder;
 	u32 val;
 	int i;
 
@@ -171,7 +164,7 @@ static int pci_doe_send_req(struct pci_doe_mb *doe_mb,
 		return -EIO;
 
 	/* Length is 2 DW of header + length of payload in DW */
-	length = 2 + task->request_pl_sz / sizeof(u32);
+	length = 2 + DIV_ROUND_UP(task->request_pl_sz, sizeof(u32));
 	if (length > PCI_DOE_MAX_LENGTH)
 		return -EIO;
 	if (length == PCI_DOE_MAX_LENGTH)
@@ -184,9 +177,18 @@ static int pci_doe_send_req(struct pci_doe_mb *doe_mb,
 	pci_write_config_dword(pdev, offset + PCI_DOE_WRITE,
 			       FIELD_PREP(PCI_DOE_DATA_OBJECT_HEADER_2_LENGTH,
 					  length));
+
+	/* Write payload */
 	for (i = 0; i < task->request_pl_sz / sizeof(u32); i++)
 		pci_write_config_dword(pdev, offset + PCI_DOE_WRITE,
 				       task->request_pl[i]);
+
+	remainder = task->request_pl_sz % sizeof(u32);
+	if (remainder) {
+		val = 0;
+		memcpy(&val, &task->request_pl[i], remainder);
+		pci_write_config_dword(pdev, offset + PCI_DOE_WRITE, val);
+	}
 
 	pci_doe_write_ctrl(doe_mb, PCI_DOE_CTRL_GO);
 
@@ -207,11 +209,11 @@ static bool pci_doe_data_obj_ready(struct pci_doe_mb *doe_mb)
 
 static int pci_doe_recv_resp(struct pci_doe_mb *doe_mb, struct pci_doe_task *task)
 {
+	size_t length, payload_length, remainder;
 	struct pci_dev *pdev = doe_mb->pdev;
 	int offset = doe_mb->cap_offset;
-	size_t length, payload_length;
+	int ret, i = 0;
 	u32 val;
-	int i;
 
 	/* Read the first dword to get the protocol */
 	pci_read_config_dword(pdev, offset + PCI_DOE_READ, &val);
@@ -238,15 +240,34 @@ static int pci_doe_recv_resp(struct pci_doe_mb *doe_mb, struct pci_doe_task *tas
 
 	/* First 2 dwords have already been read */
 	length -= 2;
-	payload_length = min(length, task->response_pl_sz / sizeof(u32));
-	/* Read the rest of the response payload */
-	for (i = 0; i < payload_length; i++) {
-		pci_read_config_dword(pdev, offset + PCI_DOE_READ,
-				      &task->response_pl[i]);
+	ret = task->response_pl_sz;
+	payload_length = DIV_ROUND_UP(task->response_pl_sz, sizeof(u32));
+	remainder = task->response_pl_sz % sizeof(u32);
+	if (!remainder)
+		remainder = sizeof(u32);
+
+	if (length < payload_length) {
+		ret = length * sizeof(u32);
+		payload_length = length;
+		remainder = sizeof(u32);
+	}
+
+	if (payload_length) {
+		/* Read all payload dwords except the last */
+		for (i = 0; i < payload_length - 1; i++) {
+			pci_read_config_dword(pdev, offset + PCI_DOE_READ,
+					      &task->response_pl[i]);
+			pci_write_config_dword(pdev, offset + PCI_DOE_READ, 0);
+		}
+
+		/* Read last payload dword */
+		pci_read_config_dword(pdev, offset + PCI_DOE_READ, &val);
+		memcpy(&task->response_pl[i], &val, remainder);
 		/* Prior to the last ack, ensure Data Object Ready */
-		if (i == (payload_length - 1) && !pci_doe_data_obj_ready(doe_mb))
+		if (!pci_doe_data_obj_ready(doe_mb))
 			return -EIO;
 		pci_write_config_dword(pdev, offset + PCI_DOE_READ, 0);
+		i++;
 	}
 
 	/* Flush excess length */
@@ -260,7 +281,7 @@ static int pci_doe_recv_resp(struct pci_doe_mb *doe_mb, struct pci_doe_task *tas
 	if (FIELD_GET(PCI_DOE_STATUS_ERROR, val))
 		return -EIO;
 
-	return min(length, task->response_pl_sz / sizeof(u32)) * sizeof(u32);
+	return ret;
 }
 
 static void signal_task_complete(struct pci_doe_task *task, int rv)
@@ -557,14 +578,6 @@ static int pci_doe_submit_task(struct pci_doe_mb *doe_mb,
 			       struct pci_doe_task *task)
 {
 	if (!pci_doe_supports_prot(doe_mb, task->prot.vid, task->prot.type))
-		return -EINVAL;
-
-	/*
-	 * DOE requests must be a whole number of DW and the response needs to
-	 * be big enough for at least 1 DW
-	 */
-	if (task->request_pl_sz % sizeof(u32) ||
-	    task->response_pl_sz < sizeof(u32))
 		return -EINVAL;
 
 	if (test_bit(PCI_DOE_FLAG_DEAD, &doe_mb->flags))
