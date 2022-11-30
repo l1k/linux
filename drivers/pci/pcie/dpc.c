@@ -154,6 +154,7 @@ pci_ers_result_t dpc_reset_link(struct pci_dev *pdev)
 	 */
 	cap = pdev->dpc_cap;
 
+	pci_info(pdev, "%s: waiting for link to become inactive\n", __func__);
 	/*
 	 * Wait until the Link is inactive, then clear DPC Trigger Status
 	 * to allow the Port to leave DPC.
@@ -161,20 +162,25 @@ pci_ers_result_t dpc_reset_link(struct pci_dev *pdev)
 	if (!pcie_wait_for_link(pdev, false))
 		pci_info(pdev, "Data Link Layer Link Active not cleared in 1000 msec\n");
 
+	pci_info(pdev, "%s: waiting for RP to become inactive\n", __func__);
 	if (pdev->dpc_rp_extensions && dpc_wait_rp_inactive(pdev)) {
 		clear_bit(PCI_DPC_RECOVERED, &pdev->priv_flags);
 		ret = PCI_ERS_RESULT_DISCONNECT;
 		goto out;
 	}
 
+	pci_info(pdev, "%s: clearing trigger bit\n", __func__);
 	pci_write_config_word(pdev, cap + PCI_EXP_DPC_STATUS,
 			      PCI_EXP_DPC_STATUS_TRIGGER);
 
+	pci_info(pdev, "%s: waiting for secondary bus\n", __func__);
 	if (pci_bridge_wait_for_secondary_bus(pdev, "DPC",
 					      PCIE_RESET_READY_POLL_MS)) {
+		pci_info(pdev, "%s: waiting for secondary bus failed\n", __func__);
 		clear_bit(PCI_DPC_RECOVERED, &pdev->priv_flags);
 		ret = PCI_ERS_RESULT_DISCONNECT;
 	} else {
+		pci_info(pdev, "%s: waiting for secondary bus succeeded\n", __func__);
 		set_bit(PCI_DPC_RECOVERED, &pdev->priv_flags);
 		ret = PCI_ERS_RESULT_RECOVERED;
 	}

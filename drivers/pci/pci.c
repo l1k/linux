@@ -1243,6 +1243,8 @@ static int pci_dev_wait(struct pci_dev *dev, char *reset_type, int timeout)
 	int delay = 1;
 	u32 id;
 
+	pci_info(dev, "%s: will wait up to %d msec\n", __func__, timeout);
+
 	/*
 	 * After reset, the device should not silently discard config
 	 * requests, but it may still indicate that it needs more time by
@@ -1263,7 +1265,7 @@ static int pci_dev_wait(struct pci_dev *dev, char *reset_type, int timeout)
 			return -ENOTTY;
 		}
 
-		if (delay > 1000)
+		// if (delay > 1000)
 			pci_info(dev, "not ready %dms after %s; waiting\n",
 				 delay - 1, reset_type);
 
@@ -1272,7 +1274,7 @@ static int pci_dev_wait(struct pci_dev *dev, char *reset_type, int timeout)
 		pci_read_config_dword(dev, PCI_COMMAND, &id);
 	}
 
-	if (delay > 1000)
+	// if (delay > 1000)
 		pci_info(dev, "ready %dms after %s\n", delay - 1,
 			 reset_type);
 
@@ -4889,11 +4891,15 @@ int pci_bridge_wait_for_secondary_bus(struct pci_dev *dev, char *reset_type,
 	struct pci_dev *child;
 	int delay;
 
-	if (pci_dev_is_disconnected(dev))
+	if (pci_dev_is_disconnected(dev)) {
+		pci_info(dev, "%s: disconnected, bailing out\n", __func__);
 		return 0;
+	}
 
-	if (!pci_is_bridge(dev))
+	if (!pci_is_bridge(dev)) {
+		pci_info(dev, "%s: not a bridge, bailing out\n", __func__);
 		return 0;
+	}
 
 	down_read(&pci_bus_sem);
 
@@ -4905,6 +4911,7 @@ int pci_bridge_wait_for_secondary_bus(struct pci_dev *dev, char *reset_type,
 	 */
 	if (!dev->subordinate || list_empty(&dev->subordinate->devices)) {
 		up_read(&pci_bus_sem);
+		pci_info(dev, "%s: no child, bailing out\n", __func__);
 		return 0;
 	}
 
@@ -4912,19 +4919,21 @@ int pci_bridge_wait_for_secondary_bus(struct pci_dev *dev, char *reset_type,
 	delay = pci_bus_max_d3cold_delay(dev->subordinate);
 	if (!delay) {
 		up_read(&pci_bus_sem);
+		pci_info(dev, "%s: delay = 0, bailing out\n", __func__);
 		return 0;
 	}
 
 	child = list_first_entry(&dev->subordinate->devices, struct pci_dev,
 				 bus_list);
 	up_read(&pci_bus_sem);
+	pci_info(dev, "%s: first child is %s\n", __func__, pci_name(child));
 
 	/*
 	 * Conventional PCI and PCI-X we need to wait Tpvrh + Trhfa before
 	 * accessing the device after reset (that is 1000 ms + 100 ms).
 	 */
 	if (!pci_is_pcie(dev)) {
-		pci_dbg(dev, "waiting %d ms for secondary bus\n", 1000 + delay);
+		pci_info(dev, "waiting %d ms for secondary bus\n", 1000 + delay);
 		msleep(1000 + delay);
 		return 0;
 	}
@@ -4946,20 +4955,23 @@ int pci_bridge_wait_for_secondary_bus(struct pci_dev *dev, char *reset_type,
 	 * Therefore we wait for 100 ms and check for the device presence
 	 * until the timeout expires.
 	 */
-	if (!pcie_downstream_port(dev))
+	if (!pcie_downstream_port(dev)) {
+		pci_info(dev, "%s: not a downstream port, bailing out\n", __func__);
 		return 0;
+	}
 
 	if (pcie_get_speed_cap(dev) <= PCIE_SPEED_5_0GT) {
-		pci_dbg(dev, "waiting %d ms for downstream link\n", delay);
+		pci_info(dev, "waiting %d ms for downstream link\n", delay);
 		msleep(delay);
 	} else {
-		pci_dbg(dev, "waiting %d ms for downstream link, after activation\n",
+		pci_info(dev, "waiting %d ms for downstream link, after activation\n",
 			delay);
 		if (!pcie_wait_for_link_delay(dev, true, delay)) {
 			/* Did not train, no need to wait any further */
 			pci_info(dev, "Data Link Layer Link Active not set in 1000 msec\n");
 			return -ENOTTY;
 		}
+		pci_info(dev, "%s: pcie_wait_for_link_delay() returned success\n", __func__);
 	}
 
 	return pci_dev_wait(child, reset_type, timeout - delay);
