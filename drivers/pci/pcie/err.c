@@ -68,6 +68,7 @@ static int report_error_detected(struct pci_dev *dev,
 			pci_info(dev, "can't recover (no error_detected callback)\n");
 		} else {
 			vote = PCI_ERS_RESULT_NONE;
+			pci_info(dev, "%s: vote = PCI_ERS_RESULT_NONE (!pci_dev_set_io_state(dev, state) || !dev->driver=%d || !dev->driver->err_handler=%d || !dev->driver->err_handler->error_detected=%d)\n", __func__, !dev->driver, !dev->driver->err_handler, !dev->driver->err_handler->error_detected);
 		}
 	} else {
 		err_handler = dev->driver->err_handler;
@@ -75,6 +76,7 @@ static int report_error_detected(struct pci_dev *dev,
 	}
 	pci_uevent_ers(dev, vote);
 	*result = merge_result(*result, vote);
+	pci_info(dev, "%s: vote is %d, result after merging: %d\n", __func__, vote, *result);
 	device_unlock(&dev->dev);
 	return 0;
 }
@@ -97,12 +99,15 @@ static int report_mmio_enabled(struct pci_dev *dev, void *data)
 	device_lock(&dev->dev);
 	if (!dev->driver ||
 		!dev->driver->err_handler ||
-		!dev->driver->err_handler->mmio_enabled)
+		!dev->driver->err_handler->mmio_enabled) {
+		pci_info(dev, "%s: no driver or callback, bailing out\n", __func__);
 		goto out;
+	}
 
 	err_handler = dev->driver->err_handler;
 	vote = err_handler->mmio_enabled(dev);
 	*result = merge_result(*result, vote);
+	pci_info(dev, "%s: vote is %d, result after merging: %d\n", __func__, vote, *result);
 out:
 	device_unlock(&dev->dev);
 	return 0;
@@ -116,12 +121,15 @@ static int report_slot_reset(struct pci_dev *dev, void *data)
 	device_lock(&dev->dev);
 	if (!dev->driver ||
 		!dev->driver->err_handler ||
-		!dev->driver->err_handler->slot_reset)
+		!dev->driver->err_handler->slot_reset) {
+		pci_info(dev, "%s: no driver or callback, bailing out\n", __func__);
 		goto out;
+	}
 
 	err_handler = dev->driver->err_handler;
 	vote = err_handler->slot_reset(dev);
 	*result = merge_result(*result, vote);
+	pci_info(dev, "%s: vote is %d, result after merging: %d\n", __func__, vote, *result);
 out:
 	device_unlock(&dev->dev);
 	return 0;
@@ -135,10 +143,13 @@ static int report_resume(struct pci_dev *dev, void *data)
 	if (!pci_dev_set_io_state(dev, pci_channel_io_normal) ||
 		!dev->driver ||
 		!dev->driver->err_handler ||
-		!dev->driver->err_handler->resume)
+		!dev->driver->err_handler->resume) {
+		pci_info(dev, "%s: no driver or callback, bailing out\n", __func__);
 		goto out;
+	}
 
 	err_handler = dev->driver->err_handler;
+	pci_info(dev, "%s: calling err_handler->resume()\n", __func__);
 	err_handler->resume(dev);
 out:
 	pci_uevent_ers(dev, PCI_ERS_RESULT_RECOVERED);
@@ -195,7 +206,7 @@ pci_ers_result_t pcie_do_recovery(struct pci_dev *dev,
 	else
 		bridge = pci_upstream_bridge(dev);
 
-	pci_dbg(bridge, "broadcast error_detected message\n");
+	pci_info(bridge, "broadcast error_detected message\n");
 	if (state == pci_channel_io_frozen) {
 		pci_walk_bridge(bridge, report_frozen_detected, &status);
 		if (reset_subordinates(bridge) != PCI_ERS_RESULT_RECOVERED) {
@@ -206,10 +217,13 @@ pci_ers_result_t pcie_do_recovery(struct pci_dev *dev,
 		pci_walk_bridge(bridge, report_normal_detected, &status);
 	}
 
+	pci_info(bridge, "%s: status is %d\n", __func__, status);
+
 	if (status == PCI_ERS_RESULT_CAN_RECOVER) {
 		status = PCI_ERS_RESULT_RECOVERED;
-		pci_dbg(bridge, "broadcast mmio_enabled message\n");
+		pci_info(bridge, "broadcast mmio_enabled message\n");
 		pci_walk_bridge(bridge, report_mmio_enabled, &status);
+		pci_info(bridge, "%s: status is %d\n", __func__, status);
 	}
 
 	if (status == PCI_ERS_RESULT_NEED_RESET) {
@@ -219,15 +233,17 @@ pci_ers_result_t pcie_do_recovery(struct pci_dev *dev,
 		 * drivers' slot_reset callbacks?
 		 */
 		status = PCI_ERS_RESULT_RECOVERED;
-		pci_dbg(bridge, "broadcast slot_reset message\n");
+		pci_info(bridge, "broadcast slot_reset message\n");
 		pci_walk_bridge(bridge, report_slot_reset, &status);
+		pci_info(bridge, "%s: status is %d\n", __func__, status);
 	}
 
 	if (status != PCI_ERS_RESULT_RECOVERED)
 		goto failed;
 
-	pci_dbg(bridge, "broadcast resume message\n");
+	pci_info(bridge, "broadcast resume message\n");
 	pci_walk_bridge(bridge, report_resume, &status);
+	pci_info(bridge, "%s: status is %d\n", __func__, status);
 
 	/*
 	 * If we have native control of AER, clear error status in the device

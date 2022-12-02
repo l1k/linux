@@ -1553,6 +1553,10 @@ static void pci_restore_ltr_state(struct pci_dev *dev)
 int pci_save_state(struct pci_dev *dev)
 {
 	int i;
+
+	pci_info(dev, "%s\n", __func__);
+	dump_stack();
+
 	/* XXX: 100% dword access ok here? */
 	for (i = 0; i < 16; i++) {
 		pci_read_config_dword(dev, i * 4, &dev->saved_config_space[i]);
@@ -1668,8 +1672,14 @@ static void pci_restore_rebar_state(struct pci_dev *pdev)
  */
 void pci_restore_state(struct pci_dev *dev)
 {
-	if (!dev->state_saved)
+	if (!dev->state_saved) {
+		pci_info(dev, "%s: !dev->state_saved, bailing out\n", __func__);
+		dump_stack();
 		return;
+	}
+
+	pci_info(dev, "%s\n", __func__);
+	dump_stack();
 
 	/*
 	 * Restore max latencies (in the LTR capability) before enabling
