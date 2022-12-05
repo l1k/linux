@@ -336,6 +336,7 @@ static int pci_doe_discovery(struct pci_doe_mb *doe_mb, u8 *index, u16 *vid,
 		return rc;
 
 	wait_for_completion(&c);
+	destroy_work_on_stack(&task.work);
 
 	if (task.rv != sizeof(response_pl))
 		return -EIO;
