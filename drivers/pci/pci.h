@@ -777,6 +777,16 @@ static inline pci_power_t mid_pci_get_power_state(struct pci_dev *pdev)
 }
 #endif
 
+#ifdef CONFIG_PCI_DOE
+void pci_doe_init(struct pci_dev *pdev);
+void pci_doe_stop(struct pci_dev *pdev);
+void pci_doe_destroy(struct pci_dev *pdev);
+#else
+static inline void pci_doe_init(struct pci_dev *pdev) { }
+static inline void pci_doe_stop(struct pci_dev *pdev) { }
+static inline void pci_doe_destroy(struct pci_dev *pdev) { }
+#endif
+
 /*
  * Config Address for PCI Configuration Mechanism #1
  *
