@@ -528,6 +528,7 @@ static int cxl_cdat_get_length(struct device *dev,
 		return rc;
 	}
 	wait_for_completion(&t.c);
+	destroy_work_on_stack(&.work);
 	if (t.task.rv < sizeof(u32))
 		return -EIO;
 
@@ -557,6 +558,7 @@ static int cxl_cdat_read_table(struct device *dev,
 			return rc;
 		}
 		wait_for_completion(&t.c);
+		destroy_work_on_stack(&t.work);
 		/* 1 DW header + 1 DW data min */
 		if (t.task.rv < (2 * sizeof(u32)))
 			return -EIO;
