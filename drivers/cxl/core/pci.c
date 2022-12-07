@@ -487,52 +487,26 @@ static struct pci_doe_mb *find_cdat_doe(struct device *uport)
 		    CXL_DOE_TABLE_ACCESS_TABLE_TYPE_CDATA) |		\
 	 FIELD_PREP(CXL_DOE_TABLE_ACCESS_ENTRY_HANDLE, (entry_handle)))
 
-static void cxl_doe_task_complete(struct pci_doe_task *task)
-{
-	complete(task->private);
-}
-
-struct cdat_doe_task {
-	u32 request_pl;
-	u32 response_pl[32];
-	struct completion c;
-	struct pci_doe_task task;
-};
-
-#define DECLARE_CDAT_DOE_TASK(req, cdt)                       \
-struct cdat_doe_task cdt = {                                  \
-	.c = COMPLETION_INITIALIZER_ONSTACK(cdt.c),           \
-	.request_pl = req,				      \
-	.task = {                                             \
-		.prot.vid = PCI_DVSEC_VENDOR_ID_CXL,        \
-		.prot.type = CXL_DOE_PROTOCOL_TABLE_ACCESS, \
-		.request_pl = &cdt.request_pl,                \
-		.request_pl_sz = sizeof(cdt.request_pl),      \
-		.response_pl = cdt.response_pl,               \
-		.response_pl_sz = sizeof(cdt.response_pl),    \
-		.complete = cxl_doe_task_complete,            \
-		.private = &cdt.c,                            \
-	}                                                     \
-}
-
 static int cxl_cdat_get_length(struct device *dev,
 			       struct pci_doe_mb *cdat_doe,
 			       size_t *length)
 {
-	DECLARE_CDAT_DOE_TASK(CDAT_DOE_REQ(0), t);
+	u32 request = CDAT_DOE_REQ(0);
+	u32 response[32];
 	int rc;
 
-	rc = pci_doe_submit_task(cdat_doe, &t.task);
+	rc = pci_doe(cdat_doe, PCI_DVSEC_VENDOR_ID_CXL,
+		     CXL_DOE_PROTOCOL_TABLE_ACCESS,
+		     &request, sizeof(request),
+		     &response, sizeof(response));
 	if (rc < 0) {
 		dev_err(dev, "DOE submit failed: %d", rc);
 		return rc;
 	}
-	wait_for_completion(&t.c);
-	destroy_work_on_stack(&.work);
-	if (t.task.rv < sizeof(u32))
+	if (rc < sizeof(u32))
 		return -EIO;
 
-	*length = t.response_pl[1];
+	*length = response[1];
 	dev_dbg(dev, "CDAT length %zu\n", *length);
 
 	return 0;
@@ -547,27 +521,29 @@ static int cxl_cdat_read_table(struct device *dev,
 	int entry_handle = 0;
 
 	do {
-		DECLARE_CDAT_DOE_TASK(CDAT_DOE_REQ(entry_handle), t);
+		u32 request = CDAT_DOE_REQ(entry_handle);
+		u32 response[32];
 		size_t entry_dw;
 		u32 *entry;
 		int rc;
 
-		rc = pci_doe_submit_task(cdat_doe, &t.task);
+		rc = pci_doe(cdat_doe, PCI_DVSEC_VENDOR_ID_CXL,
+			     CXL_DOE_PROTOCOL_TABLE_ACCESS,
+			     &request, sizeof(request),
+			     &response, sizeof(response));
 		if (rc < 0) {
 			dev_err(dev, "DOE submit failed: %d", rc);
 			return rc;
 		}
-		wait_for_completion(&t.c);
-		destroy_work_on_stack(&t.work);
 		/* 1 DW header + 1 DW data min */
-		if (t.task.rv < (2 * sizeof(u32)))
+		if (rc < (2 * sizeof(u32)))
 			return -EIO;
 
 		/* Get the CXL table access header entry handle */
 		entry_handle = FIELD_GET(CXL_DOE_TABLE_ACCESS_ENTRY_HANDLE,
-					 t.response_pl[0]);
-		entry = t.response_pl + 1;
-		entry_dw = t.task.rv / sizeof(u32);
+					 response[0]);
+		entry = response + 1;
+		entry_dw = rc / sizeof(u32);
 		/* Skip Header */
 		entry_dw -= 1;
 		entry_dw = min(length / sizeof(u32), entry_dw);
