@@ -318,27 +318,15 @@ static int pci_doe_discovery(struct pci_doe_mb *doe_mb, u8 *index, u16 *vid,
 	u32 request_pl = FIELD_PREP(PCI_DOE_DATA_OBJECT_DISC_REQ_3_INDEX,
 				    *index);
 	u32 response_pl;
-	DECLARE_COMPLETION_ONSTACK(c);
-	struct pci_doe_task task = {
-		.prot.vid = PCI_VENDOR_ID_PCI_SIG,
-		.prot.type = PCI_DOE_PROTOCOL_DISCOVERY,
-		.request_pl = &request_pl,
-		.request_pl_sz = sizeof(request_pl),
-		.response_pl = &response_pl,
-		.response_pl_sz = sizeof(response_pl),
-		.complete = pci_doe_task_complete,
-		.private = &c,
-	};
 	int rc;
 
-	rc = pci_doe_submit_task(doe_mb, &task);
+	rc = pci_doe(doe_mb, PCI_VENDOR_ID_PCI_SIG, PCI_DOE_PROTOCOL_DISCOVERY,
+		     &request_pl, sizeof(request_pl),
+		     &response_pl, sizeof(response_pl));
 	if (rc < 0)
 		return rc;
 
-	wait_for_completion(&c);
-	destroy_work_on_stack(&task.work);
-
-	if (task.rv != sizeof(response_pl))
+	if (rc != sizeof(response_pl))
 		return -EIO;
 
 	*vid = FIELD_GET(PCI_DOE_DATA_OBJECT_DISC_RSP_3_VID, response_pl);
@@ -549,3 +537,50 @@ int pci_doe_submit_task(struct pci_doe_mb *doe_mb, struct pci_doe_task *task)
 	return 0;
 }
 EXPORT_SYMBOL_GPL(pci_doe_submit_task);
+
+/**
+ * pci_doe() - Perform Data Object Exchange
+ *
+ * @doe_mb: DOE Mailbox
+ * @vendor: Vendor ID
+ * @type: Data Object Type
+ * @request: Request payload
+ * @request_sz: Size of request payload (bytes)
+ * @response: Response payload
+ * @response_sz: Size of response payload (bytes)
+ *
+ * Submit @request to @doe_mb and store the @response.
+ * The DOE exchange is performed synchronously and may therefore sleep.
+ *
+ * RETURNS: Length of received response or negative errno.
+ * Received data in excess of @response_sz is discarded.
+ * The length may be smaller than @response_sz and the caller
+ * is responsible for checking that.
+ */
+int pci_doe(struct pci_doe_mb *doe_mb, u16 vendor, u8 type,
+	    const void *request, size_t request_sz,
+	    void *response, size_t response_sz)
+{
+	DECLARE_COMPLETION_ONSTACK(c);
+	struct pci_doe_task task = {
+		.prot.vid = vendor,
+		.prot.type = type,
+		.request_pl = request,
+		.request_pl_sz = request_sz,
+		.response_pl = response,
+		.response_pl_sz = response_sz,
+		.complete = pci_doe_task_complete,
+		.private = &c,
+	};
+	int rc;
+
+	rc = pci_doe_submit_task(doe_mb, &task);
+	if (rc)
+		return rc;
+
+	wait_for_completion(&c);
+	destroy_work_on_stack(&task.work);
+
+	return task.rv;
+}
+EXPORT_SYMBOL_GPL(pci_doe);
