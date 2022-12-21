@@ -133,6 +133,9 @@
 #define SPDM_AEAD_CHACHA20_POLY1305	BIT(2)		/* 1.1 */
 #define SPDM_AEAD_SM4_GCM		BIT(3)		/* 1.2 */
 
+/* SPDM asymmetric key signature algorithms (SPDM 1.1.0 margin no 191) */
+#define SPDM_REQ_ALG_STRUCT_REQ_BASE_ASYM_ALG 4		/* 1.1 */
+
 /* SPDM key schedule algorithms (SPDM 1.1.0 margin no 192) */
 #define SPDM_REQ_ALG_STRUCT_KEY_SCHEDULE 5		/* 1.1 */
 #define SPDM_KEY_SCHEDULE_SPDM		BIT(0)		/* 1.1 */
@@ -321,7 +324,7 @@ struct spdm_negotiate_algs_rsp {
 } __packed;
 
 /* Maximum number of ReqAlgStructs sent by this implementation */
-#define SPDM_MAX_REQ_ALG_STRUCT 3
+#define SPDM_MAX_REQ_ALG_STRUCT 4
 
 struct spdm_req_alg_struct {
 	u8 alg_type;
