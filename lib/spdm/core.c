@@ -162,8 +162,8 @@ ssize_t spdm_exchange(struct spdm_state *spdm_state,
  * @spdm_state: SPDM session state
  *
  * Allocate a buffer to accommodate the concatenation of all SPDM messages
- * exchanged during an authentication sequence.  Used to verify the signature,
- * as it is computed over the hashed transcript.
+ * exchanged during an authentication or measurement sequence.  Used to verify
+ * the signature, as it is computed over the hashed transcript.
  *
  * Transcript size is initially one page.  It grows by additional pages as
  * needed.  Minimum size of an authentication sequence is 1k (only one slot
@@ -189,8 +189,9 @@ int spdm_alloc_transcript(struct spdm_state *spdm_state)
  *
  * @spdm_state: SPDM session state
  *
- * Free the transcript buffer after performing authentication.  Reset the
- * pointer to the current end of transcript as well as the allocation size.
+ * Free the transcript buffer after performing authentication or measurement.
+ * Reset the pointer to the current end of transcript as well as the allocation
+ * size.
  */
 void spdm_free_transcript(struct spdm_state *spdm_state)
 {

@@ -157,9 +157,9 @@ Description:
 
 		Note:  To ease signature verification, the "transcript" file
 		does not contain the trailing signature.  However the signature
-		is part of the final CHALLENGE_AUTH message, so the protocol
-		dissector needs to be fed the concatenation of "transcript"
-		and "signature".
+		is part of the final CHALLENGE_AUTH or MEASUREMENT message,
+		so the protocol dissector needs to be fed the concatenation of
+		"transcript" and "signature".
 
 		Signatures are added to the log even if the kernel was unable
 		to verify them (e.g. due to a missing trusted root certificate
@@ -190,6 +190,7 @@ Description:
 		generation.  It is one of (sans quotes):
 
 		"responder-challenge_auth signing"
+		"responder-measurements signing"
 
 
 What:		/sys/devices/.../signatures/[0-9]*_requester_nonce
@@ -223,13 +224,13 @@ Contact:	Lukas Wunner <lukas@wunner.de>
 Description:
 		If you do not trust the kernel to always use a fresh nonce,
 		write 32 bytes to this file to set the requester nonce used
-		in the next SPDM authentication sequence.
+		in the next SPDM authentication or measurement sequence.
 
 		Meant for remote attestation services.  You are responsible
 		for providing a nonce with sufficient entropy.  The kernel
 		only uses the nonce once, so provide a new one every time
-		you reauthenticate the device.  If you do not provide a
-		nonce, the kernel generates a random one.
+		you reauthenticate or measure the device.  If you do not
+		provide a nonce, the kernel generates a random one.
 
 		After the nonce has been consumed, it becomes readable as
 		the newest [0-9]*_requester_nonce, which proves its usage::
