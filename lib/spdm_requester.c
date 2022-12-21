@@ -140,6 +140,9 @@
 #define SPDM_AEAD_CHACHA20_POLY1305	BIT(2)		/* 1.1 */
 #define SPDM_AEAD_SM4_GCM		BIT(3)		/* 1.2 */
 
+/* SPDM asymmetric key signature algorithms (SPDM 1.1.0 margin no 191) */
+#define SPDM_REQ_ALG_STRUCT_REQ_BASE_ASYM_ALG 4		/* 1.1 */
+
 /* SPDM key schedule algorithms (SPDM 1.1.0 margin no 192) */
 #define SPDM_REQ_ALG_STRUCT_KEY_SCHEDULE 5		/* 1.1 */
 #define SPDM_KEY_SCHEDULE_SPDM		BIT(0)		/* 1.1 */
@@ -903,7 +906,7 @@ static int spdm_parse_algs(struct spdm_state *spdm_state)
 }
 
 /* Maximum number of ReqAlgStructs sent by this implementation */
-#define SPDM_MAX_REQ_ALG_STRUCT 3
+#define SPDM_MAX_REQ_ALG_STRUCT 4
 
 static int spdm_negotiate_algs(struct spdm_state *spdm_state,
 			       void *get_version_rsp,
@@ -934,6 +937,7 @@ static int spdm_negotiate_algs(struct spdm_state *spdm_state,
 	if (spdm_state->version >= 0x12)
 		req->other_params_support = SPDM_OPAQUE_DATA_FMT_GENERAL;
 
+	/* ReqAlgStruct order shall be by AlgType (SPDM 1.1.0 margin no 186) */
 	req_alg_struct = (struct spdm_req_alg_struct *)(req + 1);
 	if (spdm_state->responder_caps & SPDM_KEY_EX_CAP) {
 		req_alg_struct[i++] = (struct spdm_req_alg_struct) {
@@ -946,12 +950,19 @@ static int spdm_negotiate_algs(struct spdm_state *spdm_state,
 			.alg_count = 0x20,
 			.alg_supported = cpu_to_le16(SPDM_AEAD_ALGOS),
 		};
+	}
+	if (spdm_state->responder_caps & SPDM_MUT_AUTH_CAP)
+		req_alg_struct[i++] = (struct spdm_req_alg_struct) {
+			.alg_type = SPDM_REQ_ALG_STRUCT_REQ_BASE_ASYM_ALG,
+			.alg_count = 0x20,
+			.alg_supported = cpu_to_le16(SPDM_ASYM_ALGOS),
+		};
+	if (spdm_state->responder_caps & SPDM_KEY_EX_CAP)
 		req_alg_struct[i++] = (struct spdm_req_alg_struct) {
 			.alg_type = SPDM_REQ_ALG_STRUCT_KEY_SCHEDULE,
 			.alg_count = 0x20,
 			.alg_supported = cpu_to_le16(SPDM_KEY_SCHEDULE_SPDM),
 		};
-	}
 	WARN_ON(i > SPDM_MAX_REQ_ALG_STRUCT);
 	req_sz = sizeof(*req) + i * sizeof(*req_alg_struct);
 	rsp_sz = sizeof(*rsp) + i * sizeof(*req_alg_struct);
