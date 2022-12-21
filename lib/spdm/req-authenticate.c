@@ -227,20 +227,53 @@ static int spdm_negotiate_algs(struct spdm_state *spdm_state)
 	struct spdm_negotiate_algs_req *req = spdm_state->transcript_end;
 	struct spdm_negotiate_algs_rsp *rsp;
 	struct spdm_req_alg_struct *req_alg_struct;
-	size_t req_sz = sizeof(*req);
-	size_t rsp_sz = sizeof(*rsp);
-	int rc, length;
+	size_t req_sz, rsp_sz;
+	int rc, length, i = 0;
+
+	req_sz = sizeof(*req) +
+		 sizeof(*req_alg_struct) * SPDM_MAX_REQ_ALG_STRUCT;
 
 	/* Request length shall be <= 128 bytes (SPDM 1.1.0 margin no 185) */
 	BUILD_BUG_ON(req_sz > 128);
 
 	*req = (struct spdm_negotiate_algs_req) {
 		.code = SPDM_NEGOTIATE_ALGS,
-		.length = cpu_to_le16(req_sz),
 		.measurement_specification = SPDM_MEAS_SPEC_DMTF,
 		.base_asym_algo = cpu_to_le32(SPDM_ASYM_ALGOS),
 		.base_hash_algo = cpu_to_le32(SPDM_HASH_ALGOS),
 	};
+
+	/*
+	 * Only OpaqueDataFmt1 is supported with SPDM 1.2 or later
+	 * (Secured Messages using SPDM Spec 1.1.0 margin no 118)
+	 */
+	if (spdm_state->version >= 0x12 &&
+	    spdm_state->rsp_caps & SPDM_KEY_EX_CAP)
+		req->other_params_support = SPDM_OPAQUE_DATA_FMT_GENERAL;
+
+	req_alg_struct = (struct spdm_req_alg_struct *)(req + 1);
+	if (spdm_state->rsp_caps & SPDM_KEY_EX_CAP) {
+		req_alg_struct[i++] = (struct spdm_req_alg_struct) {
+			.alg_type = SPDM_REQ_ALG_STRUCT_DHE,
+			.alg_count = 0x20,
+			.alg_supported = cpu_to_le16(SPDM_DHE_ALGOS),
+		};
+		req_alg_struct[i++] = (struct spdm_req_alg_struct) {
+			.alg_type = SPDM_REQ_ALG_STRUCT_AEAD,
+			.alg_count = 0x20,
+			.alg_supported = cpu_to_le16(SPDM_AEAD_ALGOS),
+		};
+		req_alg_struct[i++] = (struct spdm_req_alg_struct) {
+			.alg_type = SPDM_REQ_ALG_STRUCT_KEY_SCHEDULE,
+			.alg_count = 0x20,
+			.alg_supported = cpu_to_le16(SPDM_KEY_SCHEDULE_SPDM),
+		};
+	}
+	WARN_ON(i > SPDM_MAX_REQ_ALG_STRUCT);
+	req_sz = sizeof(*req) + i * sizeof(*req_alg_struct);
+	rsp_sz = sizeof(*rsp) + i * sizeof(*req_alg_struct);
+	req->length = cpu_to_le16(req_sz);
+	req->param1 = i;
 
 	rsp = spdm_state->transcript_end += req_sz;
 
@@ -279,6 +312,7 @@ static int spdm_negotiate_algs(struct spdm_state *spdm_state)
 	    rsp->ext_asym_sel_count != 0 ||
 	    rsp->ext_hash_sel_count != 0 ||
 	    rsp->param1 > req->param1 ||
+	    rsp->other_params_sel != req->other_params_support ||
 	    (spdm_state->rsp_caps & SPDM_MEAS_CAP_MASK &&
 	     (hweight32(spdm_state->meas_hash_alg) != 1 ||
 	      rsp->measurement_specification_sel != SPDM_MEAS_SPEC_DMTF))) {
