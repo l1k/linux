@@ -231,8 +231,9 @@ static unsigned int spdm_max_log_sz = SZ_16M; /* per device */
  * @req_nonce: sysfs attribute of requester nonce (located within transcript).
  * @rsp_nonce: sysfs attribute of responder nonce (located within transcript).
  * @transcript: sysfs attribute of transcript (concatenation of all SPDM
- *	messages exchanged during an authentication sequence) sans trailing
- *	signature (to simplify signature verification by user space).
+ *	messages exchanged during an authentication or measurement sequence)
+ *	sans trailing signature (to simplify signature verification by user
+ *	space).
  * @combined_prefix: sysfs attribute of combined_spdm_prefix
  *	(SPDM 1.2.0 margin no 806, needed to verify signature).
  * @spdm_context: sysfs attribute of spdm_context
@@ -405,9 +406,9 @@ static void spdm_shrink_log(struct spdm_state *spdm_state)
  * @req_nonce_off: Requester nonce offset within the transcript
  * @rsp_nonce_off: Responder nonce offset within the transcript
  *
- * Allocate and populate a struct spdm_log_entry upon device authentication.
- * Publish it in sysfs if the device has already been registered through
- * device_add().
+ * Allocate and populate a struct spdm_log_entry upon device authentication or
+ * measurement.  Publish it in sysfs if the device has already been registered
+ * through device_add().
  */
 void spdm_create_log_entry(struct spdm_state *spdm_state,
 			   const char *spdm_context, u8 slot,
@@ -519,10 +520,11 @@ void spdm_create_log_entry(struct spdm_state *spdm_state,
  * @spdm_state: SPDM session state
  *
  * sysfs attributes representing received SPDM signatures are not static,
- * but created dynamically upon authentication.  If a device was authenticated
- * before it became visible in sysfs, the attributes could not be created.
- * This function retroactively creates those attributes in sysfs after the
- * device has become visible through device_add().
+ * but created dynamically upon authentication or measurement.  If a device
+ * was authenticated or measured before it became visible in sysfs, the
+ * attributes could not be created.  This function retroactively creates
+ * those attributes in sysfs after the device has become visible through
+ * device_add().
  */
 void spdm_publish_log(struct spdm_state *spdm_state)
 {
