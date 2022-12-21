@@ -148,6 +148,8 @@
 #define SPDM_AEAD_CHACHA20_POLY1305	BIT(2)
 #define SPDM_AEAD_SM4_GCM		BIT(3)
 
+#define SPDM_REQ_ALG_STRUCT_REQ_BASE_ASYM_ALG 4
+
 #define SPDM_REQ_ALG_STRUCT_KEY_SCHEDULE 5
 #define SPDM_KEY_SCHEDULE_SPDM		BIT(0)
 
@@ -758,7 +760,7 @@ err_free_shash:
 	return rc;
 }
 
-#define SPDM_MAX_REQ_ALG_STRUCT 3
+#define SPDM_MAX_REQ_ALG_STRUCT 4
 
 static int spdm_negotiate_algs(struct spdm_state *spdm_state)
 {
@@ -797,12 +799,19 @@ static int spdm_negotiate_algs(struct spdm_state *spdm_state)
 			.alg_count = 0x20,
 			.alg_supported = cpu_to_le16(SPDM_AEAD_ALGOS),
 		};
+	}
+	if (spdm_state->responder_caps & SPDM_MUT_AUTH_CAP)
+		req_alg_struct[i++] = (struct spdm_req_alg_struct) {
+			.alg_type = SPDM_REQ_ALG_STRUCT_REQ_BASE_ASYM_ALG,
+			.alg_count = 0x20,
+			.alg_supported = cpu_to_le16(SPDM_ASYM_ALGOS),
+		};
+	if (spdm_state->responder_caps & SPDM_KEY_EX_CAP) {
 		req_alg_struct[i++] = (struct spdm_req_alg_struct) {
 			.alg_type = SPDM_REQ_ALG_STRUCT_KEY_SCHEDULE,
 			.alg_count = 0x20,
 			.alg_supported = cpu_to_le16(SPDM_KEY_SCHEDULE_SPDM),
 		};
-	}
 	req->param1 = i;
 	req->length = cpu_to_le16(sizeof(*req) + i * sizeof(*req_alg_struct));
 	WARN_ON(i > SPDM_MAX_REQ_ALG_STRUCT);
