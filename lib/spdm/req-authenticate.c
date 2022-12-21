@@ -237,6 +237,7 @@ static int spdm_negotiate_algs(struct spdm_state *spdm_state)
 	*req = (struct spdm_negotiate_algs_req) {
 		.code = SPDM_NEGOTIATE_ALGS,
 		.length = cpu_to_le16(req_sz),
+		.measurement_specification = SPDM_MEAS_SPEC_DMTF,
 		.base_asym_algo = cpu_to_le32(SPDM_ASYM_ALGOS),
 		.base_hash_algo = cpu_to_le32(SPDM_HASH_ALGOS),
 	};
@@ -264,6 +265,7 @@ static int spdm_negotiate_algs(struct spdm_state *spdm_state)
 
 	spdm_state->base_asym_alg = le32_to_cpu(rsp->base_asym_sel);
 	spdm_state->base_hash_alg = le32_to_cpu(rsp->base_hash_sel);
+	spdm_state->meas_hash_alg = le32_to_cpu(rsp->measurement_hash_algo);
 
 	if ((spdm_state->base_asym_alg & SPDM_ASYM_ALGOS) == 0 ||
 	    (spdm_state->base_hash_alg & SPDM_HASH_ALGOS) == 0) {
@@ -276,7 +278,10 @@ static int spdm_negotiate_algs(struct spdm_state *spdm_state)
 	    hweight32(spdm_state->base_hash_alg) != 1 ||
 	    rsp->ext_asym_sel_count != 0 ||
 	    rsp->ext_hash_sel_count != 0 ||
-	    rsp->param1 > req->param1) {
+	    rsp->param1 > req->param1 ||
+	    (spdm_state->rsp_caps & SPDM_MEAS_CAP_MASK &&
+	     (hweight32(spdm_state->meas_hash_alg) != 1 ||
+	      rsp->measurement_specification_sel != SPDM_MEAS_SPEC_DMTF))) {
 		dev_err(spdm_state->dev, "Malformed algorithms response\n");
 		return -EPROTO;
 	}

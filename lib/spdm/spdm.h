@@ -103,6 +103,19 @@
 #define SPDM_HASH_SHA3_512		BIT(5)		/* 1.0 */
 #define SPDM_HASH_SM3_256		BIT(6)		/* 1.2 */
 
+/* SPDM measurement specifications (SPDM 1.0.0 sec 4.10.1.3) */
+#define SPDM_MEAS_SPEC_DMTF		BIT(0)		/* 1.0 */
+
+/* SPDM measurement hash algorithms (SPDM 1.0.0 table 14) */
+#define SPDM_MEAS_HASH_RAW		BIT(0)		/* 1.0 */
+#define SPDM_MEAS_HASH_SHA_256		BIT(1)		/* 1.0 */
+#define SPDM_MEAS_HASH_SHA_384		BIT(2)		/* 1.0 */
+#define SPDM_MEAS_HASH_SHA_512		BIT(3)		/* 1.0 */
+#define SPDM_MEAS_HASH_SHA3_256		BIT(4)		/* 1.0 */
+#define SPDM_MEAS_HASH_SHA3_384		BIT(5)		/* 1.0 */
+#define SPDM_MEAS_HASH_SHA3_512		BIT(6)		/* 1.0 */
+#define SPDM_MEAS_HASH_SM3_257		BIT(7)		/* 1.2 */
+
 #if IS_ENABLED(CONFIG_CRYPTO_RSA)
 #define SPDM_ASYM_RSA			SPDM_ASYM_RSASSA_2048 |		\
 					SPDM_ASYM_RSASSA_3072 |		\
@@ -433,10 +446,12 @@ struct spdm_error_rsp {
  * @rsp_caps: Cached capabilities of responder.
  *	Received during GET_CAPABILITIES exchange.
  * @base_asym_alg: Asymmetric key algorithm for signature verification of
- *	CHALLENGE_AUTH messages.
+ *	CHALLENGE_AUTH and MEASUREMENTS messages.
  *	Selected by responder during NEGOTIATE_ALGORITHMS exchange.
  * @base_hash_alg: Hash algorithm for signature verification of
- *	CHALLENGE_AUTH messages.
+ *	CHALLENGE_AUTH and MEASUREMENTS messages.
+ *	Selected by responder during NEGOTIATE_ALGORITHMS exchange.
+ * @meas_hash_alg: Hash algorithm for measurement blocks.
  *	Selected by responder during NEGOTIATE_ALGORITHMS exchange.
  * @supported_slots: Bitmask of responder's supported certificate slots.
  *	Received during GET_DIGESTS exchange (from SPDM 1.3).
@@ -462,8 +477,8 @@ struct spdm_error_rsp {
  *	responder's certificate chain.
  * @validate: Function to validate additional leaf certificate requirements.
  * @transcript: Concatenation of all SPDM messages exchanged during an
- *	authentication sequence.  Used to verify the signature, as it is
- *	computed over the hashed transcript.
+ *	authentication or measurement sequence.  Used to verify the signature,
+ *	as it is computed over the hashed transcript.
  * @transcript_end: Pointer into the @transcript buffer.  Marks the current
  *	end of transcript.  If another message is transmitted, it is appended
  *	at this position.
@@ -495,6 +510,7 @@ struct spdm_state {
 	u32 rsp_caps;
 	u32 base_asym_alg;
 	u32 base_hash_alg;
+	u32 meas_hash_alg;
 	unsigned long supported_slots;
 	unsigned long provisioned_slots;
 
