@@ -251,6 +251,7 @@ static int spdm_negotiate_algs(struct spdm_state *spdm_state)
 	    spdm_state->rsp_caps & SPDM_KEY_EX_CAP)
 		req->other_params_support = SPDM_OPAQUE_DATA_FMT_GENERAL;
 
+	/* ReqAlgStruct order shall be by AlgType (SPDM 1.1.0 margin no 186) */
 	req_alg_struct = (struct spdm_req_alg_struct *)(req + 1);
 	if (spdm_state->rsp_caps & SPDM_KEY_EX_CAP) {
 		req_alg_struct[i++] = (struct spdm_req_alg_struct) {
@@ -263,12 +264,19 @@ static int spdm_negotiate_algs(struct spdm_state *spdm_state)
 			.alg_count = 0x20,
 			.alg_supported = cpu_to_le16(SPDM_AEAD_ALGOS),
 		};
+	}
+	if (spdm_state->rsp_caps & SPDM_MUT_AUTH_CAP)
+		req_alg_struct[i++] = (struct spdm_req_alg_struct) {
+			.alg_type = SPDM_REQ_ALG_STRUCT_REQ_BASE_ASYM_ALG,
+			.alg_count = 0x20,
+			.alg_supported = cpu_to_le16(SPDM_ASYM_ALGOS),
+		};
+	if (spdm_state->rsp_caps & SPDM_KEY_EX_CAP)
 		req_alg_struct[i++] = (struct spdm_req_alg_struct) {
 			.alg_type = SPDM_REQ_ALG_STRUCT_KEY_SCHEDULE,
 			.alg_count = 0x20,
 			.alg_supported = cpu_to_le16(SPDM_KEY_SCHEDULE_SPDM),
 		};
-	}
 	WARN_ON(i > SPDM_MAX_REQ_ALG_STRUCT);
 	req_sz = sizeof(*req) + i * sizeof(*req_alg_struct);
 	rsp_sz = sizeof(*rsp) + i * sizeof(*req_alg_struct);
