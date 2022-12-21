@@ -116,6 +116,31 @@
 #define SPDM_MEAS_HASH_SHA3_512		BIT(6)		/* 1.0 */
 #define SPDM_MEAS_HASH_SM3_257		BIT(7)		/* 1.2 */
 
+/* SPDM Diffie-Hellman Ephemeral groups (SPDM 1.1.0 margin no 189) */
+#define SPDM_REQ_ALG_STRUCT_DHE		2		/* 1.1 */
+#define SPDM_DHE_FFDHE_2048		BIT(0)		/* 1.1 */
+#define SPDM_DHE_FFDHE_3072		BIT(1)		/* 1.1 */
+#define SPDM_DHE_FFDHE_4096		BIT(2)		/* 1.1 */
+#define SPDM_DHE_SECP_256R1		BIT(3)		/* 1.1 */
+#define SPDM_DHE_SECP_384R1		BIT(4)		/* 1.1 */
+#define SPDM_DHE_SECP_521R1		BIT(5)		/* 1.1 */
+#define SPDM_DHE_SM2_P256		BIT(6)		/* 1.2 */
+
+/* SPDM Authenticated Encryption w/ AD algorithms (SPDM 1.1.0 margin no 190) */
+#define SPDM_REQ_ALG_STRUCT_AEAD	3		/* 1.1 */
+#define SPDM_AEAD_AES_128_GCM		BIT(0)		/* 1.1 */
+#define SPDM_AEAD_AES_256_GCM		BIT(1)		/* 1.1 */
+#define SPDM_AEAD_CHACHA20_POLY1305	BIT(2)		/* 1.1 */
+#define SPDM_AEAD_SM4_GCM		BIT(3)		/* 1.2 */
+
+/* SPDM key schedule algorithms (SPDM 1.1.0 margin no 192) */
+#define SPDM_REQ_ALG_STRUCT_KEY_SCHEDULE 5		/* 1.1 */
+#define SPDM_KEY_SCHEDULE_SPDM		BIT(0)		/* 1.1 */
+
+/* SPDM opaque data formats (SPDM 1.2.0 margin no 261) */
+#define SPDM_OPAQUE_DATA_FMT_VENDOR	BIT(0)		/* 1.2 */
+#define SPDM_OPAQUE_DATA_FMT_GENERAL	BIT(1)		/* 1.2 */
+
 #if IS_ENABLED(CONFIG_CRYPTO_RSA)
 #define SPDM_ASYM_RSA			SPDM_ASYM_RSASSA_2048 |		\
 					SPDM_ASYM_RSASSA_3072 |		\
@@ -151,6 +176,14 @@
 
 #define SPDM_HASH_ALGOS		       (SPDM_HASH_SHA2_256 |		\
 					SPDM_HASH_SHA2_384_512)
+
+#define SPDM_DHE_ALGOS		       (SPDM_DHE_FFDHE_2048		| \
+					SPDM_DHE_FFDHE_3072		| \
+					SPDM_DHE_SECP_256R1		| \
+					SPDM_DHE_SECP_384R1)
+
+#define SPDM_AEAD_ALGOS		       (SPDM_AEAD_AES_256_GCM		| \
+					SPDM_AEAD_CHACHA20_POLY1305)
 
 /*
  * Common header shared by all messages.
@@ -288,7 +321,7 @@ struct spdm_negotiate_algs_rsp {
 } __packed;
 
 /* Maximum number of ReqAlgStructs sent by this implementation */
-#define SPDM_MAX_REQ_ALG_STRUCT 0
+#define SPDM_MAX_REQ_ALG_STRUCT 3
 
 struct spdm_req_alg_struct {
 	u8 alg_type;
