@@ -110,6 +110,19 @@
 #define SPDM_HASH_SHA3_512		BIT(5)		/* 1.0 */
 #define SPDM_HASH_SM3_256		BIT(6)		/* 1.2 */
 
+/* SPDM measurement specifications (SPDM 1.0.0 sec 4.10.1.3) */
+#define SPDM_MEAS_SPEC_DMTF		BIT(0)		/* 1.0 */
+
+/* SPDM measurement hash algorithms (SPDM 1.0.0 table 14) */
+#define SPDM_MEAS_HASH_RAW		BIT(0)		/* 1.0 */
+#define SPDM_MEAS_HASH_SHA_256		BIT(1)		/* 1.0 */
+#define SPDM_MEAS_HASH_SHA_384		BIT(2)		/* 1.0 */
+#define SPDM_MEAS_HASH_SHA_512		BIT(3)		/* 1.0 */
+#define SPDM_MEAS_HASH_SHA3_256		BIT(4)		/* 1.0 */
+#define SPDM_MEAS_HASH_SHA3_384		BIT(5)		/* 1.0 */
+#define SPDM_MEAS_HASH_SHA3_512		BIT(6)		/* 1.0 */
+#define SPDM_MEAS_HASH_SM3_257		BIT(7)		/* 1.2 */
+
 #if IS_ENABLED(CONFIG_CRYPTO_RSA)
 #define SPDM_ASYM_RSA			SPDM_ASYM_RSASSA_2048 |		\
 					SPDM_ASYM_RSASSA_3072 |		\
@@ -510,10 +523,12 @@ static int spdm_err(struct device *dev, struct spdm_error_rsp *rsp)
  * @responder_caps: Cached capabilities of responder.
  *	Received during GET_CAPABILITIES exchange.
  * @base_asym_alg: Asymmetric key algorithm for signature verification of
- *	CHALLENGE_AUTH messages.
+ *	CHALLENGE_AUTH and MEASUREMENTS messages.
  *	Selected by responder during NEGOTIATE_ALGORITHMS exchange.
  * @base_hash_alg: Hash algorithm for signature verification of
- *	CHALLENGE_AUTH messages.
+ *	CHALLENGE_AUTH and MEASUREMENTS messages.
+ *	Selected by responder during NEGOTIATE_ALGORITHMS exchange.
+ * @meas_hash_alg: Hash algorithm for measurement blocks.
  *	Selected by responder during NEGOTIATE_ALGORITHMS exchange.
  * @slot_mask: Bitmask of populated certificate slots in the responder.
  *	Received during GET_DIGESTS exchange.
@@ -549,6 +564,7 @@ struct spdm_state {
 	u32 responder_caps;
 	u32 base_asym_alg;
 	u32 base_hash_alg;
+	u32 meas_hash_alg;
 	unsigned long slot_mask;
 
 	/* Signature algorithm */
@@ -875,6 +891,7 @@ static int spdm_negotiate_algs(struct spdm_state *spdm_state,
 
 	req->code = SPDM_NEGOTIATE_ALGS;
 	req->length = cpu_to_le16(req_sz);
+	req->measurement_specification = SPDM_MEAS_SPEC_DMTF;
 	req->base_asym_algo = cpu_to_le32(SPDM_ASYM_ALGOS);
 	req->base_hash_algo = cpu_to_le32(SPDM_HASH_ALGOS);
 
@@ -895,6 +912,7 @@ static int spdm_negotiate_algs(struct spdm_state *spdm_state,
 
 	spdm_state->base_asym_alg = le32_to_cpu(rsp->base_asym_sel);
 	spdm_state->base_hash_alg = le32_to_cpu(rsp->base_hash_sel);
+	spdm_state->meas_hash_alg = le32_to_cpu(rsp->measurement_hash_algo);
 
 	if ((spdm_state->base_asym_alg & SPDM_ASYM_ALGOS) == 0 ||
 	    (spdm_state->base_hash_alg & SPDM_HASH_ALGOS) == 0) {
@@ -907,7 +925,10 @@ static int spdm_negotiate_algs(struct spdm_state *spdm_state,
 	    hweight32(spdm_state->base_hash_alg) != 1 ||
 	    rsp->ext_asym_sel_count != 0 ||
 	    rsp->ext_hash_sel_count != 0 ||
-	    rsp->param1 > req->param1) {
+	    rsp->param1 > req->param1 ||
+	    (spdm_state->responder_caps & SPDM_MEAS_CAP_MASK &&
+	     (hweight32(spdm_state->meas_hash_alg) != 1 ||
+	      rsp->measurement_specification_sel != SPDM_MEAS_SPEC_DMTF))) {
 		dev_err(spdm_state->dev, "Malformed algorithms response\n");
 		return -EPROTO;
 	}
