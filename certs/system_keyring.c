@@ -183,7 +183,8 @@ __init int load_module_cert(struct key *keyring)
 	pr_notice("Loading compiled-in module X.509 certificates\n");
 
 	return x509_load_certificate_list(system_certificate_list,
-					  module_cert_size, keyring);
+					  module_cert_size, keyring,
+					  KEY_ALLOC_BYPASS_RESTRICTION);
 }
 
 /*
@@ -204,7 +205,8 @@ static __init int load_system_certificate_list(void)
 	size = system_certificate_list_size - module_cert_size;
 #endif
 
-	return x509_load_certificate_list(p, size, builtin_trusted_keys);
+	return x509_load_certificate_list(p, size, builtin_trusted_keys,
+					  KEY_ALLOC_BYPASS_RESTRICTION);
 }
 late_initcall(load_system_certificate_list);
 

@@ -85,7 +85,7 @@ extern struct key *find_asymmetric_key(struct key *keyring,
 				       bool partial);
 
 int x509_load_certificate_list(const u8 cert_list[], const unsigned long list_size,
-			       const struct key *keyring);
+			       const struct key *keyring, unsigned long flags);
 
 /*
  * The payload is at the discretion of the subtype.

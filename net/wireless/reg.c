@@ -757,13 +757,15 @@ static int __init load_builtin_regdb_keys(void)
 #ifdef CONFIG_CFG80211_USE_KERNEL_REGDB_KEYS
 	x509_load_certificate_list(shipped_regdb_certs,
 				   shipped_regdb_certs_len,
-				   builtin_regdb_keys);
+				   builtin_regdb_keys,
+				   KEY_ALLOC_BYPASS_RESTRICTION);
 #endif
 #ifdef CONFIG_CFG80211_EXTRA_REGDB_KEYDIR
 	if (CONFIG_CFG80211_EXTRA_REGDB_KEYDIR[0] != '\0')
 		x509_load_certificate_list(extra_regdb_certs,
 					   extra_regdb_certs_len,
-					   builtin_regdb_keys);
+					   builtin_regdb_keys,
+					   KEY_ALLOC_BYPASS_RESTRICTION);
 #endif
 
 	return 0;

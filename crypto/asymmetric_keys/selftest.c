@@ -194,7 +194,8 @@ int __init fips_signature_selftest(void)
 		      PTR_ERR(keyring));
 
 	ret = x509_load_certificate_list(certs_selftest_keys,
-					 sizeof(certs_selftest_keys) - 1, keyring);
+					 sizeof(certs_selftest_keys) - 1,
+					 keyring, KEY_ALLOC_BYPASS_RESTRICTION);
 	if (ret < 0)
 		panic("Can't allocate certs selftest keyring: %d\n", ret);
 

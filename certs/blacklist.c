@@ -366,7 +366,8 @@ static __init int load_revocation_certificate_list(void)
 
 	return x509_load_certificate_list(revocation_certificate_list,
 					  revocation_certificate_list_size,
-					  blacklist_keyring);
+					  blacklist_keyring,
+					  KEY_ALLOC_BYPASS_RESTRICTION);
 }
 late_initcall(load_revocation_certificate_list);
 #endif

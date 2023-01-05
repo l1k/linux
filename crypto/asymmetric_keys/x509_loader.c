@@ -6,7 +6,7 @@
 
 int x509_load_certificate_list(const u8 cert_list[],
 			       const unsigned long list_size,
-			       const struct key *keyring)
+			       const struct key *keyring, unsigned long flags)
 {
 	key_ref_t key;
 	const u8 *p, *end;
@@ -37,7 +37,7 @@ int x509_load_certificate_list(const u8 cert_list[],
 					   KEY_USR_VIEW | KEY_USR_READ),
 					   KEY_ALLOC_NOT_IN_QUOTA |
 					   KEY_ALLOC_BUILT_IN |
-					   KEY_ALLOC_BYPASS_RESTRICTION);
+					   flags);
 		if (IS_ERR(key)) {
 			pr_err("Problem loading in-kernel X.509 certificate (%ld)\n",
 			       PTR_ERR(key));
