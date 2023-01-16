@@ -4959,6 +4959,11 @@ static int pci_reset_bus_function(struct pci_dev *dev, bool probe)
 	rc = pci_parent_bus_reset(dev, probe);
 done:
 	pci_dev_reset_iommu_done(dev);
+
+	/* CMA-SPDM state is lost upon a Conventional Reset */
+	if (!probe)
+		pci_cma_reauthenticate(dev);
+
 	return rc;
 }
 
