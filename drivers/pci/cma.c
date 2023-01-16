@@ -71,6 +71,16 @@ void pci_cma_init(struct pci_dev *pdev)
 	}
 
 	rc = spdm_authenticate(pdev->spdm_state);
+	if (rc != -EPROTONOSUPPORT)
+		pdev->cma_capable = true;
+}
+
+int pci_cma_reauthenticate(struct pci_dev *pdev)
+{
+	if (!pdev->cma_capable)
+		return -ENOTTY;
+
+	return spdm_authenticate(pdev->spdm_state);
 }
 
 void pci_cma_destroy(struct pci_dev *pdev)
