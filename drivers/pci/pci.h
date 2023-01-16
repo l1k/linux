@@ -319,11 +319,16 @@ static inline void pci_doe_disconnected(struct pci_dev *pdev) { }
 #ifdef CONFIG_PCI_CMA
 void pci_cma_init(struct pci_dev *pdev);
 void pci_cma_destroy(struct pci_dev *pdev);
+int pci_cma_reauthenticate(struct pci_dev *pdev);
 struct x509_certificate;
 int pci_cma_validate(struct device *dev, struct x509_certificate *leaf_cert);
 #else
 static inline void pci_cma_init(struct pci_dev *pdev) { }
 static inline void pci_cma_destroy(struct pci_dev *pdev) { }
+static inline int pci_cma_reauthenticate(struct pci_dev *pdev)
+{
+	return -ENOTTY;
+}
 #endif
 
 /**
