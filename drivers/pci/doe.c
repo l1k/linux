@@ -222,6 +222,10 @@ static int pci_doe_recv_resp(struct pci_doe_mb *doe_mb, struct pci_doe_task *tas
 
 static void signal_task_complete(struct pci_doe_task *task, int rv)
 {
+	struct pci_doe_mb *doe_mb = task->doe_mb;
+	struct pci_dev *pdev = doe_mb->pdev;
+
+	up_read(&pdev->reset_lock);
 	task->rv = rv;
 	task->complete(task);
 }
@@ -258,6 +262,8 @@ static void doe_statemachine_work(struct work_struct *work)
 		signal_task_complete(task, -EIO);
 		return;
 	}
+
+	down_read(&pdev->reset_lock);
 
 	/* Send request */
 	rc = pci_doe_send_req(doe_mb, task);
