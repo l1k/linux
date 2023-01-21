@@ -5144,7 +5144,7 @@ static int pci_reset_bus_function(struct pci_dev *dev, bool probe)
 void pci_dev_lock(struct pci_dev *dev)
 {
 	/* block PM suspend, driver probe, etc. */
-	device_lock(&dev->dev);
+	down_write(&dev->reset_lock);
 	pci_cfg_access_lock(dev);
 }
 EXPORT_SYMBOL_GPL(pci_dev_lock);
@@ -5152,10 +5152,10 @@ EXPORT_SYMBOL_GPL(pci_dev_lock);
 /* Return 1 on successful lock, 0 on contention */
 int pci_dev_trylock(struct pci_dev *dev)
 {
-	if (device_trylock(&dev->dev)) {
+	if (down_write_trylock(&dev->reset_lock)) {
 		if (pci_cfg_access_trylock(dev))
 			return 1;
-		device_unlock(&dev->dev);
+		up_write(&dev->reset_lock);
 	}
 
 	return 0;
@@ -5165,7 +5165,7 @@ EXPORT_SYMBOL_GPL(pci_dev_trylock);
 void pci_dev_unlock(struct pci_dev *dev)
 {
 	pci_cfg_access_unlock(dev);
-	device_unlock(&dev->dev);
+	up_write(&dev->reset_lock);
 }
 EXPORT_SYMBOL_GPL(pci_dev_unlock);
 

@@ -164,9 +164,10 @@ static int get_adapter_status(struct hotplug_slot *hotplug_slot, u8 *value)
  */
 static void pciehp_check_presence(struct controller *ctrl)
 {
+	struct pci_dev *pdev = ctrl->pcie->port;
 	int occupied;
 
-	down_read_nested(&ctrl->reset_lock, ctrl->depth);
+	down_read(&pdev->reset_lock);
 	mutex_lock(&ctrl->state_lock);
 
 	occupied = pciehp_card_present_or_link_active(ctrl);
@@ -177,7 +178,7 @@ static void pciehp_check_presence(struct controller *ctrl)
 		pciehp_request(ctrl, PCI_EXP_SLTSTA_PDC);
 
 	mutex_unlock(&ctrl->state_lock);
-	up_read(&ctrl->reset_lock);
+	up_read(&pdev->reset_lock);
 }
 
 static int pciehp_probe(struct pcie_device *dev)

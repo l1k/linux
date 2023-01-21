@@ -585,10 +585,10 @@ static void pciehp_ignore_dpc_link_change(struct controller *ctrl,
 	 * the corresponding link change may have been ignored above.
 	 * Synthesize it to ensure that it is acted on.
 	 */
-	down_read_nested(&ctrl->reset_lock, ctrl->depth);
+	down_read(&pdev->reset_lock);
 	if (!pciehp_check_link_active(ctrl))
 		pciehp_request(ctrl, PCI_EXP_SLTSTA_DLLSC);
-	up_read(&ctrl->reset_lock);
+	up_read(&pdev->reset_lock);
 }
 
 static irqreturn_t pciehp_isr(int irq, void *dev_id)
@@ -749,12 +749,12 @@ static irqreturn_t pciehp_ist(int irq, void *dev_id)
 	 * Disable requests have higher priority than Presence Detect Changed
 	 * or Data Link Layer State Changed events.
 	 */
-	down_read_nested(&ctrl->reset_lock, ctrl->depth);
+	down_read(&pdev->reset_lock);
 	if (events & DISABLE_SLOT)
 		pciehp_handle_disable_request(ctrl);
 	else if (events & (PCI_EXP_SLTSTA_PDC | PCI_EXP_SLTSTA_DLLSC))
 		pciehp_handle_presence_or_link_change(ctrl, events);
-	up_read(&ctrl->reset_lock);
+	up_read(&pdev->reset_lock);
 
 	ret = IRQ_HANDLED;
 out:
@@ -911,8 +911,6 @@ int pciehp_reset_slot(struct hotplug_slot *hotplug_slot, bool probe)
 	if (probe)
 		return 0;
 
-	down_write_nested(&ctrl->reset_lock, ctrl->depth);
-
 	if (!ATTN_BUTTN(ctrl)) {
 		ctrl_mask |= PCI_EXP_SLTCTL_PDCE;
 		stat_mask |= PCI_EXP_SLTSTA_PDC;
@@ -931,7 +929,6 @@ int pciehp_reset_slot(struct hotplug_slot *hotplug_slot, bool probe)
 	ctrl_dbg(ctrl, "%s: SLOTCTRL %x write cmd %x\n", __func__,
 		 pci_pcie_cap(ctrl->pcie->port) + PCI_EXP_SLTCTL, ctrl_mask);
 
-	up_write(&ctrl->reset_lock);
 	return rc;
 }
 
@@ -967,20 +964,6 @@ static inline void dbg_ctrl(struct controller *ctrl)
 
 #define FLAG(x, y)	(((x) & (y)) ? '+' : '-')
 
-static inline int pcie_hotplug_depth(struct pci_dev *dev)
-{
-	struct pci_bus *bus = dev->bus;
-	int depth = 0;
-
-	while (bus->parent) {
-		bus = bus->parent;
-		if (bus->self && bus->self->is_hotplug_bridge)
-			depth++;
-	}
-
-	return depth;
-}
-
 struct controller *pcie_init(struct pcie_device *dev)
 {
 	struct controller *ctrl;
@@ -994,7 +977,6 @@ struct controller *pcie_init(struct pcie_device *dev)
 		return NULL;
 
 	ctrl->pcie = dev;
-	ctrl->depth = pcie_hotplug_depth(dev->port);
 	pcie_capability_read_dword(pdev, PCI_EXP_SLTCAP, &slot_cap);
 
 	if (pdev->hotplug_user_indicators)
@@ -1010,7 +992,6 @@ struct controller *pcie_init(struct pcie_device *dev)
 	ctrl->slot_cap = slot_cap;
 	mutex_init(&ctrl->ctrl_lock);
 	mutex_init(&ctrl->state_lock);
-	init_rwsem(&ctrl->reset_lock);
 	init_waitqueue_head(&ctrl->requester);
 	init_waitqueue_head(&ctrl->queue);
 	INIT_DELAYED_WORK(&ctrl->button_work, pciehp_queue_pushbutton_work);

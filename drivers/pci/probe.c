@@ -2315,6 +2315,9 @@ struct pci_dev *pci_alloc_dev(struct pci_bus *bus)
 		.end = -1,
 	};
 
+	init_rwsem(&dev->reset_lock);
+	lockdep_set_novalidate_class(&dev->reset_lock);
+
 #ifdef CONFIG_PCI_MSI
 	raw_spin_lock_init(&dev->msi_lock);
 #endif

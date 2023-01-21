@@ -321,7 +321,9 @@ static long local_pci_probe(void *_ddi)
 	 */
 	pm_runtime_get_sync(dev);
 	pci_dev->driver = pci_drv;
+	down_read(&pci_dev->reset_lock);
 	rc = pci_drv->probe(pci_dev, ddi->id);
+	up_read(&pci_dev->reset_lock);
 	if (!rc)
 		return rc;
 	if (rc < 0) {
@@ -473,7 +475,9 @@ static void pci_device_remove(struct device *dev)
 
 	if (drv->remove) {
 		pm_runtime_get_sync(dev);
+		down_read(&pci_dev->reset_lock);
 		drv->remove(pci_dev);
+		up_read(&pci_dev->reset_lock);
 		pm_runtime_put_noidle(dev);
 	}
 	pcibios_free_irq(pci_dev);
