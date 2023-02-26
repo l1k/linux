@@ -679,8 +679,10 @@ static bool brcm_pcie_link_up(struct brcm_pcie *pcie)
 	u32 val = readl(pcie->base + PCIE_MISC_PCIE_STATUS);
 	u32 dla = FIELD_GET(PCIE_MISC_PCIE_STATUS_PCIE_DL_ACTIVE_MASK, val);
 	u32 plu = FIELD_GET(PCIE_MISC_PCIE_STATUS_PCIE_PHYLINKUP_MASK, val);
+	u16 lnksta = readw(pcie->base + BRCM_PCIE_CAP_REGS + PCI_EXP_LNKSTA);
+	u16 lt = FIELD_GET(PCI_EXP_LNKSTA_LT, lnksta);
 
-	return dla && plu;
+	return dla && plu && !lt;
 }
 
 static void __iomem *brcm_pcie_map_bus(struct pci_bus *bus,
