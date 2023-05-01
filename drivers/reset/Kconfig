@@ -229,6 +229,14 @@ config RESET_SIMPLE
 	   - Allwinner SoCs
 	   - SiFive FU740 SoCs
 
+config RESET_SLB9670
+	tristate "Infineon SLB9670 TPM Reset Driver"
+	depends on TCG_TIS_SPI
+	help
+	  This enables the reset driver for the Infineon SLB9670 Trusted
+	  Platform Module. Only say Y here if your platform is incapable of
+	  resetting the TPM upon reboot, requiring the kernel to do so.
+
 config RESET_SOCFPGA
 	bool "SoCFPGA Reset Driver" if COMPILE_TEST && (!ARM || !ARCH_INTEL_SOCFPGA)
 	default ARM && ARCH_INTEL_SOCFPGA
