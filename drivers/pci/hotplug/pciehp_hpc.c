@@ -984,8 +984,9 @@ static inline int pcie_hotplug_depth(struct pci_dev *dev)
 struct controller *pcie_init(struct pcie_device *dev)
 {
 	struct controller *ctrl;
-	u32 slot_cap, slot_cap2, link_cap;
+	u32 slot_cap, slot_cap2, link_cap, aer_cap;
 	u8 poweron;
+	u16 aer;
 	struct pci_dev *pdev = dev->port;
 	struct pci_bus *subordinate = pdev->subordinate;
 
@@ -1029,6 +1030,17 @@ struct controller *pcie_init(struct pcie_device *dev)
 
 	if (dmi_first_match(inband_presence_disabled_dmi_table))
 		ctrl->inband_presence_disabled = 1;
+
+	/*
+	 * Surprise Down Errors are par for the course on Hot-Plug Surprise
+	 * capable ports, so disable reporting in case BIOS left it enabled.
+	 */
+	aer = pci_find_ext_capability(pdev, PCI_EXT_CAP_ID_ERR);
+	if (aer && slot_cap & PCI_EXP_SLTCAP_HPS) {
+		pci_read_config_dword(pdev, aer + PCI_ERR_UNCOR_MASK, &aer_cap);
+		aer_cap |= PCI_ERR_UNC_SURPDN;
+		pci_write_config_dword(pdev, aer + PCI_ERR_UNCOR_MASK, aer_cap);
+	}
 
 	/* Check if Data Link Layer Link Active Reporting is implemented */
 	pcie_capability_read_dword(pdev, PCI_EXP_LNKCAP, &link_cap);
