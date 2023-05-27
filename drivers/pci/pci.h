@@ -322,6 +322,7 @@ void pci_cma_destroy(struct pci_dev *pdev);
 int pci_cma_reauthenticate(struct pci_dev *pdev);
 struct x509_certificate;
 int pci_cma_validate(struct device *dev, struct x509_certificate *leaf_cert);
+extern const struct attribute_group pci_cma_attr_group;
 #else
 static inline void pci_cma_init(struct pci_dev *pdev) { }
 static inline void pci_cma_destroy(struct pci_dev *pdev) { }
