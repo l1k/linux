@@ -35,6 +35,7 @@ obj-$(CONFIG_PCI_DOE)		+= doe.o
 obj-$(CONFIG_PCI_DYNAMIC_OF_NODES) += of_property.o
 
 obj-$(CONFIG_PCI_CMA)		+= cma.o cma-x509.o cma.asn1.o
+obj-$(CONFIG_PCI_CMA_SYSFS)	+= cma-sysfs.o
 $(obj)/cma-x509.o:		$(obj)/cma.asn1.h
 $(obj)/cma.asn1.o:		$(obj)/cma.asn1.c $(obj)/cma.asn1.h
 
