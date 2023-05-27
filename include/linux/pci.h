@@ -2689,6 +2689,18 @@ static inline bool pci_is_thunderbolt_attached(struct pci_dev *pdev)
 void pci_uevent_ers(struct pci_dev *pdev, enum  pci_ers_result err_type);
 #endif
 
+#ifdef CONFIG_PCI_CMA
+static inline struct spdm_state *pci_dev_to_spdm_state(struct pci_dev *pdev)
+{
+	return pdev->spdm_state;
+}
+#else
+static inline struct spdm_state *pci_dev_to_spdm_state(struct pci_dev *pdev)
+{
+	return NULL;
+}
+#endif
+
 #include <linux/dma-mapping.h>
 
 #define pci_printk(level, pdev, fmt, arg...) \

@@ -340,10 +340,15 @@ static inline void pci_doe_disconnected(struct pci_dev *pdev) { }
 void pci_cma_init(struct pci_dev *pdev);
 void pci_cma_destroy(struct pci_dev *pdev);
 void pci_cma_reauthenticate(struct pci_dev *pdev);
+static inline void pci_cma_disable(struct pci_dev *pdev)
+{
+	pdev->spdm_state = ERR_PTR(-ENOTTY);
+}
 #else
 static inline void pci_cma_init(struct pci_dev *pdev) { }
 static inline void pci_cma_destroy(struct pci_dev *pdev) { }
 static inline void pci_cma_reauthenticate(struct pci_dev *pdev) { }
+static inline void pci_cma_disable(struct pci_dev *pdev) { }
 #endif
 
 /**

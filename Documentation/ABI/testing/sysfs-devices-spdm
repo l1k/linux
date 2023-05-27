@@ -1,0 +1,31 @@
+What:		/sys/devices/.../authenticated
+Date:		March 2024
+Contact:	Lukas Wunner <lukas@wunner.de>
+Description:
+		This file contains 1 if the device authenticated successfully
+		with SPDM (Security Protocol and Data Model).  It contains 0 if
+		the device failed authentication (and may thus be malicious).
+
+		Writing anything to this file causes reauthentication.
+		That may be opportune after updating the device keyring.
+		The device keyring of the PCI bus is named ".cma"
+		(Component Measurement and Authentication).
+
+		Reauthentication may also be necessary after device identity
+		has mutated, e.g. after downloading firmware to an FPGA device.
+
+		The file is not visible if authentication is unsupported
+		by the device.
+
+		If the kernel could not determine whether authentication is
+		supported because memory was low or communication with the
+		device was not working, the file is visible but accessing it
+		fails with error code ENOTTY.
+
+		This prevents downgrade attacks where an attacker consumes
+		memory or disturbs communication in order to create the
+		appearance that a device does not support authentication.
+
+		The reason why authentication support could not be determined
+		is apparent from "dmesg".  To re-probe authentication support
+		of PCI devices, exercise the "remove" and "rescan" attributes.

@@ -18,6 +18,7 @@
 #include <linux/dev_printk.h>
 #include <linux/key.h>
 #include <linux/module.h>
+#include <linux/pci.h>
 #include <linux/random.h>
 #include <linux/spdm.h>
 
@@ -1522,5 +1523,83 @@ void spdm_destroy(struct spdm_state *spdm_state)
 	kfree(spdm_state);
 }
 EXPORT_SYMBOL_GPL(spdm_destroy);
+
+#ifdef CONFIG_SYSFS
+/**
+ * dev_to_spdm_state() - Retrieve SPDM session state for given device
+ *
+ * @dev: Responder device
+ *
+ * Returns a pointer to the device's SPDM session state,
+ *	   %NULL if the device doesn't have one or
+ *	   %ERR_PTR if it couldn't be determined whether SPDM is supported.
+ *
+ * In the %ERR_PTR case, attributes are visible but return an error on access.
+ * This prevents downgrade attacks where an attacker disturbs memory allocation
+ * or communication with the device in order to create the appearance that SPDM
+ * is unsupported.  E.g. with PCI devices, the attacker may foil CMA or DOE
+ * initialization by simply hogging memory.
+ */
+static struct spdm_state *dev_to_spdm_state(struct device *dev)
+{
+	if (dev_is_pci(dev))
+		return pci_dev_to_spdm_state(to_pci_dev(dev));
+
+	/* Insert mappers for further bus types here. */
+
+	return NULL;
+}
+
+static ssize_t authenticated_store(struct device *dev,
+				   struct device_attribute *attr,
+				   const char *buf, size_t count)
+{
+	struct spdm_state *spdm_state = dev_to_spdm_state(dev);
+	int rc;
+
+	if (IS_ERR(spdm_state))
+		return PTR_ERR(spdm_state);
+
+	rc = spdm_authenticate(spdm_state);
+	if (rc)
+		return rc;
+
+	return count;
+}
+
+static ssize_t authenticated_show(struct device *dev,
+				  struct device_attribute *attr, char *buf)
+{
+	struct spdm_state *spdm_state = dev_to_spdm_state(dev);
+
+	if (IS_ERR(spdm_state))
+		return PTR_ERR(spdm_state);
+
+	return sysfs_emit(buf, "%u\n", spdm_state->authenticated);
+}
+static DEVICE_ATTR_RW(authenticated);
+
+static struct attribute *spdm_attrs[] = {
+	&dev_attr_authenticated.attr,
+	NULL
+};
+
+static umode_t spdm_attrs_are_visible(struct kobject *kobj,
+				      struct attribute *a, int n)
+{
+	struct device *dev = kobj_to_dev(kobj);
+	struct spdm_state *spdm_state = dev_to_spdm_state(dev);
+
+	if (!spdm_state)
+		return 0;
+
+	return a->mode;
+}
+
+const struct attribute_group spdm_attr_group = {
+	.attrs = spdm_attrs,
+	.is_visible = spdm_attrs_are_visible,
+};
+#endif /* CONFIG_SYSFS */
 
 MODULE_LICENSE("GPL");

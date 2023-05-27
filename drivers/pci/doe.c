@@ -688,6 +688,7 @@ void pci_doe_init(struct pci_dev *pdev)
 		if (IS_ERR(doe_mb)) {
 			pci_err(pdev, "[%x] failed to create mailbox: %ld\n",
 				offset, PTR_ERR(doe_mb));
+			pci_cma_disable(pdev);
 			continue;
 		}
 
@@ -696,6 +697,7 @@ void pci_doe_init(struct pci_dev *pdev)
 			pci_err(pdev, "[%x] failed to insert mailbox: %d\n",
 				offset, rc);
 			pci_doe_destroy_mb(doe_mb);
+			pci_cma_disable(pdev);
 		}
 	}
 }
