@@ -165,8 +165,10 @@ void pci_cma_init(struct pci_dev *pdev)
 {
 	struct pci_doe_mb *doe;
 
-	if (IS_ERR(pci_cma_keyring))
+	if (IS_ERR(pci_cma_keyring)) {
+		pdev->spdm_state = ERR_PTR(-ENOTTY);
 		return;
+	}
 
 	if (!pci_is_pcie(pdev))
 		return;
@@ -179,8 +181,10 @@ void pci_cma_init(struct pci_dev *pdev)
 	pdev->spdm_state = spdm_create(&pdev->dev, pci_doe_transport, doe,
 				       PCI_DOE_MAX_PAYLOAD, pci_cma_keyring,
 				       pci_cma_validate);
-	if (!pdev->spdm_state)
+	if (!pdev->spdm_state) {
+		pdev->spdm_state = ERR_PTR(-ENOTTY);
 		return;
+	}
 
 	/*
 	 * Keep spdm_state allocated even if initial authentication fails
@@ -198,7 +202,7 @@ void pci_cma_init(struct pci_dev *pdev)
  */
 void pci_cma_reauthenticate(struct pci_dev *pdev)
 {
-	if (!pdev->spdm_state)
+	if (IS_ERR_OR_NULL(pdev->spdm_state))
 		return;
 
 	spdm_authenticate(pdev->spdm_state);
@@ -206,7 +210,7 @@ void pci_cma_reauthenticate(struct pci_dev *pdev)
 
 void pci_cma_destroy(struct pci_dev *pdev)
 {
-	if (!pdev->spdm_state)
+	if (IS_ERR_OR_NULL(pdev->spdm_state))
 		return;
 
 	spdm_destroy(pdev->spdm_state);

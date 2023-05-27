@@ -8,3 +8,7 @@
 obj-$(CONFIG_SPDM) += spdm.o
 
 spdm-y := core.o req-authenticate.o
+
+ifdef CONFIG_SYSFS
+spdm-y += req-sysfs.o
+endif
