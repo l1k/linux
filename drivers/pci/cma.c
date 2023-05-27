@@ -63,6 +63,7 @@ void pci_cma_init(struct pci_dev *pdev)
 				       PCI_DOE_MAX_PAYLOAD, pci_cma_keyring,
 				       pci_cma_validate);
 	if (!pdev->spdm_state) {
+		pdev->cma_init_failed = true;
 		return;
 	}
 
