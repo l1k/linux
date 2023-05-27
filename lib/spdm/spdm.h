@@ -418,6 +418,7 @@ struct spdm_error_rsp {
  * struct spdm_state - SPDM session state
  *
  * @dev: Responder device.  Used for error reporting and passed to @transport.
+ *	Attributes in sysfs appear below this device's directory.
  * @lock: Serializes multiple concurrent spdm_authenticate() calls.
  * @authenticated: Whether device was authenticated successfully.
  * @dev: Responder device.  Used for error reporting and passed to @transport.
