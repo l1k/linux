@@ -1369,7 +1369,7 @@ static DEVICE_ATTR_RW(l1_2_aspm);
 static DEVICE_ATTR_RW(l1_1_pcipm);
 static DEVICE_ATTR_RW(l1_2_pcipm);
 
-static struct attribute *aspm_ctrl_attrs[] = {
+static const struct attribute *aspm_ctrl_attrs[] = {
 	&dev_attr_clkpm.attr,
 	&dev_attr_l0s_aspm.attr,
 	&dev_attr_l1_aspm.attr,

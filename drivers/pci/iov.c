@@ -262,7 +262,7 @@ err_pdev:
 static DEVICE_ATTR_WO(sriov_vf_msix_count);
 #endif
 
-static struct attribute *sriov_vf_dev_attrs[] = {
+static const struct attribute *sriov_vf_dev_attrs[] = {
 #ifdef CONFIG_PCI_MSI
 	&dev_attr_sriov_vf_msix_count.attr,
 #endif
@@ -535,7 +535,7 @@ static DEVICE_ATTR_RO(sriov_stride);
 static DEVICE_ATTR_RO(sriov_vf_device);
 static DEVICE_ATTR_RW(sriov_drivers_autoprobe);
 
-static struct attribute *sriov_pf_dev_attrs[] = {
+static const struct attribute *sriov_pf_dev_attrs[] = {
 	&dev_attr_sriov_totalvfs.attr,
 	&dev_attr_sriov_numvfs.attr,
 	&dev_attr_sriov_offset.attr,

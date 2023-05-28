@@ -446,7 +446,7 @@ static ssize_t partition_count_show(struct device *dev,
 }
 static DEVICE_ATTR_RO(partition_count);
 
-static struct attribute *switchtec_device_attrs[] = {
+static const struct attribute *switchtec_device_attrs[] = {
 	&dev_attr_device_version.attr,
 	&dev_attr_fw_version.attr,
 	&dev_attr_vendor_id.attr,

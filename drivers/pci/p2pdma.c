@@ -173,14 +173,14 @@ static struct bin_attribute p2pmem_alloc_attr = {
 	.size = SZ_1T,
 };
 
-static struct attribute *p2pmem_attrs[] = {
+static const struct attribute *p2pmem_attrs[] = {
 	&dev_attr_size.attr,
 	&dev_attr_available.attr,
 	&dev_attr_published.attr,
 	NULL,
 };
 
-static struct bin_attribute *p2pmem_bin_attrs[] = {
+static const struct bin_attribute *p2pmem_bin_attrs[] = {
 	&p2pmem_alloc_attr,
 	NULL,
 };

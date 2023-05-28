@@ -106,7 +106,7 @@ static ssize_t index_show(struct device *dev, struct device_attribute *attr,
 }
 static DEVICE_ATTR_RO(index);
 
-static struct attribute *smbios_attrs[] = {
+static const struct attribute *smbios_attrs[] = {
 	&dev_attr_smbios_label.attr,
 	&dev_attr_index.attr,
 	NULL,
@@ -207,7 +207,7 @@ static ssize_t acpi_index_show(struct device *dev,
 }
 static DEVICE_ATTR_RO(acpi_index);
 
-static struct attribute *acpi_attrs[] = {
+static const struct attribute *acpi_attrs[] = {
 	&dev_attr_label.attr,
 	&dev_attr_acpi_index.attr,
 	NULL,

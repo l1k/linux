@@ -89,7 +89,7 @@ static struct kobj_attribute add_slot_attr =
 static struct kobj_attribute remove_slot_attr =
 	__ATTR(REMOVE_SLOT_ATTR_NAME, 0644, remove_slot_show, remove_slot_store);
 
-static struct attribute *default_attrs[] = {
+static const struct attribute *default_attrs[] = {
 	&add_slot_attr.attr,
 	&remove_slot_attr.attr,
 	NULL,

@@ -90,7 +90,7 @@ static struct pci_slot_attribute pci_slot_attr_max_speed =
 static struct pci_slot_attribute pci_slot_attr_cur_speed =
 	__ATTR(cur_bus_speed, S_IRUGO, cur_speed_read_file, NULL);
 
-static struct attribute *pci_slot_default_attrs[] = {
+static const struct attribute *pci_slot_default_attrs[] = {
 	&pci_slot_attr_address.attr,
 	&pci_slot_attr_max_speed.attr,
 	&pci_slot_attr_cur_speed.attr,

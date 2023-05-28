@@ -289,7 +289,7 @@ static ssize_t remove_id_store(struct device_driver *driver, const char *buf,
 }
 static DRIVER_ATTR_WO(remove_id);
 
-static struct attribute *pci_drv_attrs[] = {
+static const struct attribute *pci_drv_attrs[] = {
 	&driver_attr_new_id.attr,
 	&driver_attr_remove_id.attr,
 	NULL,

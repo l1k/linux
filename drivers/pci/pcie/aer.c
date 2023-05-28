@@ -589,7 +589,7 @@ aer_stats_rootport_attr(aer_rootport_total_err_fatal,
 aer_stats_rootport_attr(aer_rootport_total_err_nonfatal,
 			 rootport_total_nonfatal_errs);
 
-static struct attribute *aer_stats_attrs[] __ro_after_init = {
+static const struct attribute *aer_stats_attrs[] = {
 	&dev_attr_aer_dev_correctable.attr,
 	&dev_attr_aer_dev_fatal.attr,
 	&dev_attr_aer_dev_nonfatal.attr,

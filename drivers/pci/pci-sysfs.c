@@ -446,7 +446,7 @@ static ssize_t rescan_store(const struct bus_type *bus, const char *buf, size_t 
 }
 static BUS_ATTR_WO(rescan);
 
-static struct attribute *pci_bus_attrs[] = {
+static const struct attribute *pci_bus_attrs[] = {
 	&bus_attr_rescan.attr,
 	NULL,
 };
@@ -590,7 +590,7 @@ static ssize_t driver_override_show(struct device *dev,
 }
 static DEVICE_ATTR_RW(driver_override);
 
-static struct attribute *pci_dev_attrs[] = {
+static const struct attribute *pci_dev_attrs[] = {
 	&dev_attr_power_state.attr,
 	&dev_attr_resource.attr,
 	&dev_attr_vendor.attr,
@@ -622,13 +622,13 @@ static struct attribute *pci_dev_attrs[] = {
 	NULL,
 };
 
-static struct attribute *pci_bridge_attrs[] = {
+static const struct attribute *pci_bridge_attrs[] = {
 	&dev_attr_subordinate_bus_number.attr,
 	&dev_attr_secondary_bus_number.attr,
 	NULL,
 };
 
-static struct attribute *pcie_dev_attrs[] = {
+static const struct attribute *pcie_dev_attrs[] = {
 	&dev_attr_current_link_speed.attr,
 	&dev_attr_current_link_width.attr,
 	&dev_attr_max_link_width.attr,
@@ -636,7 +636,7 @@ static struct attribute *pcie_dev_attrs[] = {
 	NULL,
 };
 
-static struct attribute *pcibus_attrs[] = {
+static const struct attribute *pcibus_attrs[] = {
 	&dev_attr_bus_rescan.attr,
 	&dev_attr_cpuaffinity.attr,
 	&dev_attr_cpulistaffinity.attr,
@@ -813,7 +813,7 @@ static ssize_t pci_write_config(struct file *filp, struct kobject *kobj,
 }
 static BIN_ATTR(config, 0644, pci_read_config, pci_write_config, 0);
 
-static struct bin_attribute *pci_dev_config_attrs[] = {
+static const struct bin_attribute *pci_dev_config_attrs[] = {
 	&bin_attr_config,
 	NULL,
 };
@@ -1316,7 +1316,7 @@ static ssize_t pci_read_rom(struct file *filp, struct kobject *kobj,
 }
 static BIN_ATTR(rom, 0600, pci_read_rom, pci_write_rom, 0);
 
-static struct bin_attribute *pci_dev_rom_attrs[] = {
+static const struct bin_attribute *pci_dev_rom_attrs[] = {
 	&bin_attr_rom,
 	NULL,
 };
@@ -1365,7 +1365,7 @@ static ssize_t reset_store(struct device *dev, struct device_attribute *attr,
 }
 static DEVICE_ATTR_WO(reset);
 
-static struct attribute *pci_dev_reset_attrs[] = {
+static const struct attribute *pci_dev_reset_attrs[] = {
 	&dev_attr_reset.attr,
 	NULL,
 };
@@ -1469,7 +1469,7 @@ pci_dev_resource_resize_attr(3);
 pci_dev_resource_resize_attr(4);
 pci_dev_resource_resize_attr(5);
 
-static struct attribute *resource_resize_attrs[] = {
+static const struct attribute *resource_resize_attrs[] = {
 	&dev_attr_resource0_resize.attr,
 	&dev_attr_resource1_resize.attr,
 	&dev_attr_resource2_resize.attr,
@@ -1536,7 +1536,7 @@ static int __init pci_sysfs_init(void)
 }
 late_initcall(pci_sysfs_init);
 
-static struct attribute *pci_dev_dev_attrs[] = {
+static const struct attribute *pci_dev_dev_attrs[] = {
 	&dev_attr_boot_vga.attr,
 	NULL,
 };
@@ -1554,7 +1554,7 @@ static umode_t pci_dev_attrs_are_visible(struct kobject *kobj,
 	return a->mode;
 }
 
-static struct attribute *pci_dev_hp_attrs[] = {
+static const struct attribute *pci_dev_hp_attrs[] = {
 	&dev_attr_remove.attr,
 	&dev_attr_dev_rescan.attr,
 	NULL,

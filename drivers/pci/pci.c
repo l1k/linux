@@ -5317,7 +5317,7 @@ error:
 }
 static DEVICE_ATTR_RW(reset_method);
 
-static struct attribute *pci_dev_reset_method_attrs[] = {
+static const struct attribute *pci_dev_reset_method_attrs[] = {
 	&dev_attr_reset_method.attr,
 	NULL,
 };
