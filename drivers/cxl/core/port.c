@@ -66,13 +66,13 @@ static ssize_t modalias_show(struct device *dev, struct device_attribute *attr,
 }
 static DEVICE_ATTR_RO(modalias);
 
-static struct attribute *cxl_base_attributes[] = {
+static const struct attribute *cxl_base_attributes[] = {
 	&dev_attr_devtype.attr,
 	&dev_attr_modalias.attr,
 	NULL,
 };
 
-struct attribute_group cxl_base_attribute_group = {
+const struct attribute_group cxl_base_attribute_group = {
 	.attrs = cxl_base_attributes,
 };
 
@@ -275,7 +275,7 @@ static ssize_t interleave_ways_show(struct device *dev,
 
 static DEVICE_ATTR_RO(interleave_ways);
 
-static struct attribute *cxl_decoder_base_attrs[] = {
+static const struct attribute *cxl_decoder_base_attrs[] = {
 	&dev_attr_start.attr,
 	&dev_attr_size.attr,
 	&dev_attr_locked.attr,
@@ -284,11 +284,11 @@ static struct attribute *cxl_decoder_base_attrs[] = {
 	NULL,
 };
 
-static struct attribute_group cxl_decoder_base_attribute_group = {
+static const struct attribute_group cxl_decoder_base_attribute_group = {
 	.attrs = cxl_decoder_base_attrs,
 };
 
-static struct attribute *cxl_decoder_root_attrs[] = {
+static const struct attribute *cxl_decoder_root_attrs[] = {
 	&dev_attr_cap_pmem.attr,
 	&dev_attr_cap_ram.attr,
 	&dev_attr_cap_type2.attr,
@@ -332,7 +332,7 @@ static umode_t cxl_root_decoder_visible(struct kobject *kobj, struct attribute *
 	return a->mode;
 }
 
-static struct attribute_group cxl_decoder_root_attribute_group = {
+static const struct attribute_group cxl_decoder_root_attribute_group = {
 	.attrs = cxl_decoder_root_attrs,
 	.is_visible = cxl_root_decoder_visible,
 };
@@ -344,14 +344,14 @@ static const struct attribute_group *cxl_decoder_root_attribute_groups[] = {
 	NULL,
 };
 
-static struct attribute *cxl_decoder_switch_attrs[] = {
+static const struct attribute *cxl_decoder_switch_attrs[] = {
 	&dev_attr_target_type.attr,
 	&dev_attr_target_list.attr,
 	SET_CXL_REGION_ATTR(region)
 	NULL,
 };
 
-static struct attribute_group cxl_decoder_switch_attribute_group = {
+static const struct attribute_group cxl_decoder_switch_attribute_group = {
 	.attrs = cxl_decoder_switch_attrs,
 };
 
@@ -362,7 +362,7 @@ static const struct attribute_group *cxl_decoder_switch_attribute_groups[] = {
 	NULL,
 };
 
-static struct attribute *cxl_decoder_endpoint_attrs[] = {
+static const struct attribute *cxl_decoder_endpoint_attrs[] = {
 	&dev_attr_target_type.attr,
 	&dev_attr_mode.attr,
 	&dev_attr_dpa_size.attr,
@@ -371,7 +371,7 @@ static struct attribute *cxl_decoder_endpoint_attrs[] = {
 	NULL,
 };
 
-static struct attribute_group cxl_decoder_endpoint_attribute_group = {
+static const struct attribute_group cxl_decoder_endpoint_attribute_group = {
 	.attrs = cxl_decoder_endpoint_attrs,
 };
 
@@ -1913,12 +1913,12 @@ static ssize_t flush_store(const struct bus_type *bus, const char *buf, size_t c
 
 static BUS_ATTR_WO(flush);
 
-static struct attribute *cxl_bus_attributes[] = {
+static const struct attribute *cxl_bus_attributes[] = {
 	&bus_attr_flush.attr,
 	NULL,
 };
 
-static struct attribute_group cxl_bus_attribute_group = {
+static const struct attribute_group cxl_bus_attribute_group = {
 	.attrs = cxl_bus_attributes,
 };
 

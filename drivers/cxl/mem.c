@@ -235,12 +235,12 @@ static umode_t cxl_mem_visible(struct kobject *kobj, struct attribute *a, int n)
 	return a->mode;
 }
 
-static struct attribute *cxl_mem_attrs[] = {
+static const struct attribute *cxl_mem_attrs[] = {
 	&dev_attr_trigger_poison_list.attr,
 	NULL
 };
 
-static struct attribute_group cxl_mem_group = {
+static const struct attribute_group cxl_mem_group = {
 	.attrs = cxl_mem_attrs,
 	.is_visible = cxl_mem_visible,
 };

@@ -333,7 +333,7 @@ out:
 }
 EXPORT_SYMBOL_NS_GPL(cxl_clear_poison, CXL);
 
-static struct attribute *cxl_memdev_attributes[] = {
+static const struct attribute *cxl_memdev_attributes[] = {
 	&dev_attr_serial.attr,
 	&dev_attr_firmware_version.attr,
 	&dev_attr_payload_max.attr,
@@ -342,12 +342,12 @@ static struct attribute *cxl_memdev_attributes[] = {
 	NULL,
 };
 
-static struct attribute *cxl_memdev_pmem_attributes[] = {
+static const struct attribute *cxl_memdev_pmem_attributes[] = {
 	&dev_attr_pmem_size.attr,
 	NULL,
 };
 
-static struct attribute *cxl_memdev_ram_attributes[] = {
+static const struct attribute *cxl_memdev_ram_attributes[] = {
 	&dev_attr_ram_size.attr,
 	NULL,
 };
@@ -360,17 +360,17 @@ static umode_t cxl_memdev_visible(struct kobject *kobj, struct attribute *a,
 	return a->mode;
 }
 
-static struct attribute_group cxl_memdev_attribute_group = {
+static const struct attribute_group cxl_memdev_attribute_group = {
 	.attrs = cxl_memdev_attributes,
 	.is_visible = cxl_memdev_visible,
 };
 
-static struct attribute_group cxl_memdev_ram_attribute_group = {
+static const struct attribute_group cxl_memdev_ram_attribute_group = {
 	.name = "ram",
 	.attrs = cxl_memdev_ram_attributes,
 };
 
-static struct attribute_group cxl_memdev_pmem_attribute_group = {
+static const struct attribute_group cxl_memdev_pmem_attribute_group = {
 	.name = "pmem",
 	.attrs = cxl_memdev_pmem_attributes,
 };

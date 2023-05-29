@@ -607,7 +607,7 @@ static ssize_t size_show(struct device *dev, struct device_attribute *attr,
 }
 static DEVICE_ATTR_RW(size);
 
-static struct attribute *cxl_region_attrs[] = {
+static const struct attribute *cxl_region_attrs[] = {
 	&dev_attr_uuid.attr,
 	&dev_attr_commit.attr,
 	&dev_attr_interleave_ways.attr,
@@ -1869,7 +1869,7 @@ TARGET_ATTR_RW(13);
 TARGET_ATTR_RW(14);
 TARGET_ATTR_RW(15);
 
-static struct attribute *target_attrs[] = {
+static const struct attribute *target_attrs[] = {
 	&dev_attr_target0.attr,
 	&dev_attr_target1.attr,
 	&dev_attr_target2.attr,
