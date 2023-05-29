@@ -87,8 +87,8 @@ struct attribute_group {
 					      struct attribute *, int);
 	umode_t			(*is_bin_visible)(struct kobject *,
 						  struct bin_attribute *, int);
-	struct attribute	**attrs;
-	struct bin_attribute	**bin_attrs;
+	const struct attribute	**attrs;
+	const struct bin_attribute **bin_attrs;
 };
 
 /*
