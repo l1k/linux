@@ -2450,6 +2450,14 @@ static inline resource_size_t pci_iov_resource_size(struct pci_dev *dev, int res
 static inline void pci_vf_drivers_autoprobe(struct pci_dev *dev, bool probe) { }
 #endif
 
+#ifdef CONFIG_PCI_CMA
+void pci_cma_claim_ownership(struct pci_dev *pdev);
+void pci_cma_return_ownership(struct pci_dev *pdev);
+#else
+static inline void pci_cma_claim_ownership(struct pci_dev *pdev) { }
+static inline void pci_cma_return_ownership(struct pci_dev *pdev) { }
+#endif
+
 /**
  * pci_pcie_cap - get the saved PCIe capability offset
  * @dev: PCI device
