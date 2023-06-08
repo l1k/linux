@@ -32,6 +32,8 @@ struct spdm_state *spdm_create(struct device *dev, spdm_transport *transport,
 
 int spdm_authenticate(struct spdm_state *spdm_state);
 
+void spdm_await(struct spdm_state *spdm_state);
+
 void spdm_destroy(struct spdm_state *spdm_state);
 
 extern const struct attribute_group spdm_attr_group;
