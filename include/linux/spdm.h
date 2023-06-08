@@ -34,6 +34,8 @@ int spdm_authenticate(struct spdm_state *spdm_state);
 
 bool spdm_authenticated(struct spdm_state *spdm_state);
 
+void spdm_await(struct spdm_state *spdm_state);
+
 void spdm_destroy(struct spdm_state *spdm_state);
 
 #endif
