@@ -515,6 +515,7 @@ static inline int pci_dev_set_disconnected(struct pci_dev *dev, void *unused)
 #define PCI_DPC_RECOVERED 1
 #define PCI_DPC_RECOVERING 2
 #define PCI_DEV_REMOVED 3
+#define PCI_CMA_OWNED_BY_GUEST 4
 
 static inline void pci_dev_assign_added(struct pci_dev *dev)
 {
