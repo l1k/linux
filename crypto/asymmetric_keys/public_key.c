@@ -277,7 +277,7 @@ static int software_key_eds_op(struct kernel_pkey_params *params,
 	sg_init_one(&in_sg, in, params->in_len);
 	sg_init_one(&out_sg, out, params->out_len);
 	akcipher_request_set_crypt(req, &in_sg, &out_sg, params->in_len,
-				   params->out_len);
+				   params->out_len, params->encoding);
 	crypto_init_wait(&cwait);
 	akcipher_request_set_callback(req, CRYPTO_TFM_REQ_MAY_BACKLOG |
 				      CRYPTO_TFM_REQ_MAY_SLEEP,
@@ -448,7 +448,7 @@ int public_key_verify_signature(const struct public_key *pkey,
 	sg_set_buf(&src_sg[0], sig->s, sig->s_size);
 	sg_set_buf(&src_sg[1], sig->digest, sig->digest_size);
 	akcipher_request_set_crypt(req, src_sg, NULL, sig->s_size,
-				   sig->digest_size);
+				   sig->digest_size, sig->encoding);
 	crypto_init_wait(&cwait);
 	akcipher_request_set_callback(req, CRYPTO_TFM_REQ_MAY_BACKLOG |
 				      CRYPTO_TFM_REQ_MAY_SLEEP,
