@@ -139,6 +139,7 @@ static int ecdsa_verify(struct akcipher_request *req)
 	struct crypto_akcipher *tfm = crypto_akcipher_reqtfm(req);
 	struct ecc_ctx *ctx = akcipher_tfm_ctx(tfm);
 	size_t bufsize = ctx->curve->g.ndigits * sizeof(u64);
+	size_t keylen = DIV_ROUND_UP(ctx->curve->nbits, 8);
 	struct ecdsa_signature_ctx sig_ctx = {
 		.curve = ctx->curve,
 	};
@@ -159,10 +160,21 @@ static int ecdsa_verify(struct akcipher_request *req)
 		sg_nents_for_len(req->src, req->src_len + req->dst_len),
 		buffer, req->src_len + req->dst_len, 0);
 
-	ret = asn1_ber_decoder(&ecdsasignature_decoder, &sig_ctx,
-			       buffer, req->src_len);
-	if (ret < 0)
+	if (strcmp(req->enc, "x962") == 0) {
+		ret = asn1_ber_decoder(&ecdsasignature_decoder, &sig_ctx,
+				       buffer, req->src_len);
+		if (ret < 0)
+			goto error;
+	} else if (strcmp(req->enc, "p1363") == 0 &&
+		   req->src_len == 2 * keylen) {
+		ecc_digits_from_bytes(buffer, keylen, sig_ctx.r,
+				      ctx->curve->g.ndigits);
+		ecc_digits_from_bytes(&buffer[keylen], keylen, sig_ctx.s,
+				      ctx->curve->g.ndigits);
+	} else {
+		ret = -EINVAL;
 		goto error;
+	}
 
 	/* if the hash is shorter then we will add leading zeros to fit to ndigits */
 	diff = bufsize - req->dst_len;
