@@ -674,6 +674,7 @@ static const struct akcipher_testvec ecdsa_nist_p192_tv_template[] = {
 	"\x4f\x53\x75\xc8\x02\x48\xeb\xc3\x92\x0f\x1e\x72\xee\xc4\xa3\xe3"
 	"\x5c\x99\xdb\x92\x5b\x36",
 	.c_size = 54,
+	.enc = "x962",
 	.public_key_vec = true,
 	.siggen_sigver_test = true,
 	}, {
@@ -698,6 +699,7 @@ static const struct akcipher_testvec ecdsa_nist_p192_tv_template[] = {
 	"\x69\x43\xfd\x48\x19\x86\xcf\x32\xdd\x41\x74\x6a\x51\xc7\xd9\x7d"
 	"\x3a\x97\xd9\xcd\x1a\x6a\x49",
 	.c_size = 55,
+	.enc = "x962",
 	.public_key_vec = true,
 	.siggen_sigver_test = true,
 	}, {
@@ -723,6 +725,7 @@ static const struct akcipher_testvec ecdsa_nist_p192_tv_template[] = {
 	"\xbc\x5a\x1f\x82\x96\x61\xd7\xd1\x01\x77\x44\x5d\x53\xa4\x7c\x93"
 	"\x12\x3b\x3b\x28\xfb\x6d\xe1",
 	.c_size = 55,
+	.enc = "x962",
 	.public_key_vec = true,
 	.siggen_sigver_test = true,
 	}, {
@@ -749,6 +752,7 @@ static const struct akcipher_testvec ecdsa_nist_p192_tv_template[] = {
 	"\xb4\x22\x9a\x98\x73\x3c\x83\xa9\x14\x2a\x5e\xf5\xe5\xfb\x72\x28"
 	"\x6a\xdf\x97\xfd\x82\x76\x24",
 	.c_size = 55,
+	.enc = "x962",
 	.public_key_vec = true,
 	.siggen_sigver_test = true,
 	},
@@ -779,6 +783,7 @@ static const struct akcipher_testvec ecdsa_nist_p256_tv_template[] = {
 	"\x4a\x77\x22\xec\xc8\x66\xbf\x50\x05\x58\x39\x0e\x26\x92\xce\xd5"
 	"\x2e\x8b\xde\x5a\x04\x0e",
 	.c_size = 70,
+	.enc = "x962",
 	.public_key_vec = true,
 	.siggen_sigver_test = true,
 	}, {
@@ -805,6 +810,7 @@ static const struct akcipher_testvec ecdsa_nist_p256_tv_template[] = {
 	"\xa9\x81\xac\x4a\x50\xd0\x91\x0a\x6e\x1b\xc4\xaf\xe1\x83\xc3\x4f"
 	"\x2a\x65\x35\x23\xe3\x1d\xfa",
 	.c_size = 71,
+	.enc = "x962",
 	.public_key_vec = true,
 	.siggen_sigver_test = true,
 	}, {
@@ -832,6 +838,7 @@ static const struct akcipher_testvec ecdsa_nist_p256_tv_template[] = {
 	"\x19\xfb\x5f\x92\xf4\xc9\x23\x37\x69\xf4\x3b\x4f\x47\xcf\x9b\x16"
 	"\xc0\x60\x11\x92\xdc\x17\x89\x12",
 	.c_size = 72,
+	.enc = "x962",
 	.public_key_vec = true,
 	.siggen_sigver_test = true,
 	}, {
@@ -860,6 +867,7 @@ static const struct akcipher_testvec ecdsa_nist_p256_tv_template[] = {
 	"\x00\xdd\xab\xd4\xc0\x2b\xe6\x5c\xad\xc3\x78\x1c\xc2\xc1\x19\x76"
 	"\x31\x79\x4a\xe9\x81\x6a\xee",
 	.c_size = 71,
+	.enc = "x962",
 	.public_key_vec = true,
 	.siggen_sigver_test = true,
 	},
@@ -894,6 +902,7 @@ static const struct akcipher_testvec ecdsa_nist_p384_tv_template[] = {
 	"\x4d\xd0\xc6\x6e\xb0\xe9\xfc\x14\x9f\x19\xd0\x42\x8b\x93\xc2\x11"
 	"\x88\x2b\x82\x26\x5e\x1c\xda\xfb",
 	.c_size = 104,
+	.enc = "x962",
 	.public_key_vec = true,
 	.siggen_sigver_test = true,
 	}, {
@@ -924,6 +933,7 @@ static const struct akcipher_testvec ecdsa_nist_p384_tv_template[] = {
 	"\xc0\x75\x3e\x23\x5e\x36\x4f\x8d\xde\x1e\x93\x8d\x95\xbb\x10\x0e"
 	"\xf4\x1f\x39\xca\x4d\x43",
 	.c_size = 102,
+	.enc = "x962",
 	.public_key_vec = true,
 	.siggen_sigver_test = true,
 	}, {
@@ -955,6 +965,7 @@ static const struct akcipher_testvec ecdsa_nist_p384_tv_template[] = {
 	"\x44\x92\x8c\x86\x99\x65\xb3\x97\x96\x17\x04\xc9\x05\x77\xf1\x8e"
 	"\xab\x8d\x4e\xde\xe6\x6d\x9b\x66",
 	.c_size = 104,
+	.enc = "x962",
 	.public_key_vec = true,
 	.siggen_sigver_test = true,
 	}, {
@@ -987,6 +998,7 @@ static const struct akcipher_testvec ecdsa_nist_p384_tv_template[] = {
 	"\x5f\x8d\x7a\xf9\xfb\x34\xe4\x8b\x80\xa5\xb6\xda\x2c\x4e\x45\xcf"
 	"\x3c\x93\xff\x50\x5d",
 	.c_size = 101,
+	.enc = "x962",
 	.public_key_vec = true,
 	.siggen_sigver_test = true,
 	},
