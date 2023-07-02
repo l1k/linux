@@ -153,6 +153,7 @@ struct akcipher_testvec {
 	const unsigned char *params;
 	const unsigned char *m;
 	const unsigned char *c;
+	const char *enc;
 	unsigned int key_len;
 	unsigned int param_len;
 	unsigned int m_size;

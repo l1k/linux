@@ -89,7 +89,7 @@ EXPORT_SYMBOL_GPL(crypto_sig_maxsize);
 
 int crypto_sig_sign(struct crypto_sig *tfm,
 		    const void *src, unsigned int slen,
-		    void *dst, unsigned int dlen)
+		    void *dst, unsigned int dlen, const char *enc)
 {
 	struct crypto_akcipher **ctx = crypto_sig_ctx(tfm);
 	struct crypto_akcipher_sync_data data = {
@@ -98,6 +98,7 @@ int crypto_sig_sign(struct crypto_sig *tfm,
 		.dst = dst,
 		.slen = slen,
 		.dlen = dlen,
+		.enc = enc,
 	};
 
 	return crypto_akcipher_sync_prep(&data) ?:
@@ -108,7 +109,7 @@ EXPORT_SYMBOL_GPL(crypto_sig_sign);
 
 int crypto_sig_verify(struct crypto_sig *tfm,
 		      const void *src, unsigned int slen,
-		      const void *digest, unsigned int dlen)
+		      const void *digest, unsigned int dlen, const char *enc)
 {
 	struct crypto_akcipher **ctx = crypto_sig_ctx(tfm);
 	struct crypto_akcipher_sync_data data = {
@@ -116,6 +117,7 @@ int crypto_sig_verify(struct crypto_sig *tfm,
 		.src = src,
 		.slen = slen,
 		.dlen = dlen,
+		.enc = enc,
 	};
 	int err;
 
