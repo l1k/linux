@@ -1,0 +1,25 @@
+-- Component Measurement and Authentication (CMA-SPDM, PCIe r6.1 sec 6.31.3)
+-- X.509 Subject Alternative Name (RFC 5280 sec 4.2.1.6)
+--
+-- https://www.rfc-editor.org/rfc/rfc5280#section-4.2.1.6
+
+SubjectAltName ::= GeneralNames
+
+GeneralNames ::= SEQUENCE OF GeneralName
+
+GeneralName ::= CHOICE {
+	otherName			[0]     OtherName,
+	rfc822Name			[1]	IA5String,
+	dNSName				[2]	IA5String,
+	x400Address			[3]	ANY,
+	directoryName			[4]	ANY,
+	ediPartyName			[5]	ANY,
+	uniformResourceIdentifier	[6]	IA5String,
+	iPAddress			[7]	OCTET STRING,
+	registeredID			[8]	OBJECT IDENTIFIER
+}
+
+OtherName ::= SEQUENCE {
+	type-id		OBJECT IDENTIFIER ({ pci_cma_note_oid }),
+	value		UTF8String ({ pci_cma_note_san })
+}
