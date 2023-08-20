@@ -579,6 +579,21 @@ int x509_process_extension(void *context, size_t hdrlen,
 		return 0;
 	}
 
+	if (ctx->last_oid == OID_subjectAltName) {
+		/*
+		 * A certificate MUST NOT include more than one instance
+		 * of a particular extension (RFC 5280 sec 4.2).
+		 */
+		if (ctx->cert->raw_san) {
+			pr_err("Duplicate Subject Alternative Name\n");
+			return -EINVAL;
+		}
+
+		ctx->cert->raw_san = v;
+		ctx->cert->raw_san_size = vlen;
+		return 0;
+	}
+
 	if (ctx->last_oid == OID_keyUsage) {
 		/*
 		 * Get hold of the keyUsage bit string
