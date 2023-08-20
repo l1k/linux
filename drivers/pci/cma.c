@@ -64,7 +64,8 @@ void pci_cma_init(struct pci_dev *pdev)
 		return;
 
 	pdev->spdm_state = spdm_create(&pdev->dev, pci_doe_transport, doe,
-				       PCI_DOE_MAX_PAYLOAD, pci_cma_keyring);
+				       PCI_DOE_MAX_PAYLOAD, pci_cma_keyring,
+				       pci_cma_validate);
 	if (!pdev->spdm_state) {
 		return;
 	}
