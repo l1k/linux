@@ -419,6 +419,12 @@ static int spdm_validate_cert_chain(struct spdm_state *spdm_state, u8 slot,
 		offset += length;
 	} while (offset < total_length);
 
+	if (spdm_state->validate) {
+		rc = spdm_state->validate(spdm_state->dev, prev);
+		if (rc)
+			return rc;
+	}
+
 	spdm_state->leaf_key = prev->pub;
 	prev->pub = NULL;
 
