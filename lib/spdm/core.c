@@ -379,12 +379,14 @@ void spdm_reset(struct spdm_state *spdm_state)
  * @transport_priv: Transport private data
  * @transport_sz: Maximum message size the transport is capable of (in bytes)
  * @keyring: Trusted root certificates
+ * @validate: Function to validate additional leaf certificate requirements
+ *	(optional, may be %NULL)
  *
  * Return a pointer to the allocated SPDM session state or NULL on error.
  */
 struct spdm_state *spdm_create(struct device *dev, spdm_transport *transport,
 			       void *transport_priv, u32 transport_sz,
-			       struct key *keyring)
+			       struct key *keyring, spdm_validate *validate)
 {
 	struct spdm_state *spdm_state = kzalloc(sizeof(*spdm_state), GFP_KERNEL);
 
@@ -396,6 +398,7 @@ struct spdm_state *spdm_create(struct device *dev, spdm_transport *transport,
 	spdm_state->transport_priv = transport_priv;
 	spdm_state->transport_sz = transport_sz;
 	spdm_state->root_keyring = keyring;
+	spdm_state->validate = validate;
 
 	mutex_init(&spdm_state->lock);
 

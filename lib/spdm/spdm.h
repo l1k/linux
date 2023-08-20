@@ -455,6 +455,7 @@ struct spdm_error_rsp {
  *	responder's signatures.
  * @root_keyring: Keyring against which to check the first certificate in
  *	responder's certificate chain.
+ * @validate: Function to validate additional leaf certificate requirements.
  * @transcript: Concatenation of all SPDM messages exchanged during an
  *	authentication sequence.  Used to verify the signature, as it is
  *	computed over the hashed transcript.
@@ -495,6 +496,7 @@ struct spdm_state {
 	size_t slot_sz[SPDM_SLOTS];
 	struct public_key *leaf_key;
 	struct key *root_keyring;
+	spdm_validate *validate;
 
 	/* Transcript */
 	void *transcript;
