@@ -117,7 +117,7 @@ static int spdm_get_capabilities(struct spdm_state *spdm_state)
 		req_sz = sizeof(*req);
 		rsp_sz = sizeof(*rsp);
 		req->data_transfer_size = cpu_to_le32(spdm_state->transport_sz);
-		req->max_spdm_msg_size = cpu_to_le32(spdm_state->transport_sz);
+		req->max_spdm_msg_size = cpu_to_le32(UINT_MAX);
 	}
 
 	rsp = spdm_state->transcript_end += req_sz;
