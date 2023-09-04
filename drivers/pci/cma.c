@@ -59,6 +59,11 @@ void pci_cma_init(struct pci_dev *pdev)
 	if (!doe)
 		return;
 
+	if (!pci_cma_keyring) {
+		pr_err("Keyring not initialized");
+		return;
+	}
+
 	pdev->spdm_state = spdm_create(&pdev->dev, pci_doe_transport, doe,
 				       PCI_DOE_MAX_PAYLOAD, pci_cma_keyring,
 				       pci_cma_validate);
@@ -143,9 +148,11 @@ __init static int pci_cma_keyring_init(void)
 					KEY_USR_WRITE | KEY_USR_SEARCH,
 					KEY_ALLOC_NOT_IN_QUOTA |
 					KEY_ALLOC_SET_KEEP, NULL, NULL);
-	if (IS_ERR(pci_cma_keyring))
+	if (IS_ERR(pci_cma_keyring)) {
 		pr_err("Could not allocate keyring\n");
+		return PTR_ERR(pci_cma_keyring);
+	}
 
 	return 0;
 }
-device_initcall(pci_cma_keyring_init);
+subsys_initcall(pci_cma_keyring_init);
