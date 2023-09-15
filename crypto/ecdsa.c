@@ -151,6 +151,9 @@ static int ecdsa_verify(struct akcipher_request *req)
 	if (unlikely(!ctx->pub_key_set))
 		return -EINVAL;
 
+	if (!req->enc)
+		return -EINVAL;
+
 	buffer = kmalloc(req->src_len + req->dst_len, GFP_KERNEL);
 	if (!buffer)
 		return -ENOMEM;
@@ -159,12 +162,12 @@ static int ecdsa_verify(struct akcipher_request *req)
 		sg_nents_for_len(req->src, req->src_len + req->dst_len),
 		buffer, req->src_len + req->dst_len, 0);
 
-	if (strcmp(req->enc, "x962") == 0) {
+	if (strncmp(req->enc, "x962", 4) == 0) {
 		ret = asn1_ber_decoder(&ecdsasignature_decoder, &sig_ctx,
 				       buffer, req->src_len);
 		if (ret < 0)
 			goto error;
-	} else if (strcmp(req->enc, "p1363") == 0 &&
+	} else if (strncmp(req->enc, "p1363", 5) == 0 &&
 		   req->src_len == 2 * keylen) {
 		ecc_swap_digits(buffer, sig_ctx.r, ctx->curve->g.ndigits);
 		ecc_swap_digits(buffer + keylen,
