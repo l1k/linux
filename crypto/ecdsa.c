@@ -160,6 +160,9 @@ static int ecdsa_verify(struct akcipher_request *req)
 		sg_nents_for_len(req->src, req->src_len + req->dst_len),
 		buffer, req->src_len + req->dst_len, 0);
 
+	if (WARN_ON(!req->enc))
+		req->enc = "x962";
+
 	if (strcmp(req->enc, "x962") == 0) {
 		ret = asn1_ber_decoder(&ecdsasignature_decoder, &sig_ctx,
 				       buffer, req->src_len);
