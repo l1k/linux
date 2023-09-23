@@ -1,0 +1,56 @@
+# SPDX-License-Identifier: (GPL-2.0-only OR BSD-2-Clause)
+%YAML 1.2
+---
+$id: http://devicetree.org/schemas/reset/infineon,slb9670-reset.yaml#
+$schema: http://devicetree.org/meta-schemas/core.yaml#
+
+title: Infineon SLB9670 TPM Reset
+
+maintainers:
+  - Lukas Wunner <lukas@wunner.de>
+
+description: |
+  The Infineon SLB9670 Trusted Platform Module requires a specific reset
+  sequence on its RST# pin which is documented in sections 5.4 and 5.5 of
+  the datasheet [1]:
+
+  deassert RST#
+  wait at least 60 ms
+  assert RST#
+  wait at least 2 usecs
+  deassert RST#
+  wait at least 60 ms
+  assert RST#
+  wait at least 2 usecs
+  deassert RST#
+  wait at least 60 ms before issuing the first TPM command
+
+  [1] https://www.infineon.com/dgdl/?fileId=5546d4626fc1ce0b016fc78270350cd6
+
+properties:
+  compatible:
+    enum:
+      - infineon,slb9670-reset
+
+  reset-gpios:
+    maxItems: 1
+    description: GPIO connected to the RST# pin
+
+  "#reset-cells":
+    const: 0
+
+required:
+  - compatible
+  - reset-gpios
+  - "#reset-cells"
+
+additionalProperties: false
+
+examples:
+  - |
+    #include <dt-bindings/gpio/gpio.h>
+    reset-controller {
+        compatible = "infineon,slb9670-reset";
+        #reset-cells = <0>;
+        reset-gpios = <&gpio 0 GPIO_ACTIVE_LOW>;
+    };
