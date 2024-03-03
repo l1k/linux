@@ -120,7 +120,8 @@
 
 #if IS_ENABLED(CONFIG_CRYPTO_ECDSA)
 #define SPDM_ASYM_ECDSA			SPDM_ASYM_ECDSA_ECC_NIST_P256 |	\
-					SPDM_ASYM_ECDSA_ECC_NIST_P384
+					SPDM_ASYM_ECDSA_ECC_NIST_P384 | \
+					SPDM_ASYM_ECDSA_ECC_NIST_P521
 #else
 #define SPDM_ASYM_ECDSA			0
 #endif
@@ -823,6 +824,10 @@ static int spdm_parse_algs(struct spdm_state *spdm_state)
 		break;
 	case SPDM_ASYM_ECDSA_ECC_NIST_P384:
 		spdm_state->sig_len = 96;
+		spdm_state->base_asym_enc = "p1363";
+		break;
+	case SPDM_ASYM_ECDSA_ECC_NIST_P521:
+		spdm_state->sig_len = 132;
 		spdm_state->base_asym_enc = "p1363";
 		break;
 	default:
