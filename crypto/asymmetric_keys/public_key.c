@@ -234,7 +234,6 @@ static int software_key_query(const struct kernel_pkey_params *params,
 	info->key_size = len * 8;
 
 	if (strncmp(pkey->pkey_algo, "ecdsa", 5) == 0) {
-		int slen = len;
 		/*
 		 * ECDSA key sizes are much smaller than RSA, and thus could
 		 * operate on (hashed) inputs that are larger than key size.
@@ -246,21 +245,29 @@ static int software_key_query(const struct kernel_pkey_params *params,
 
 		/*
 		 * Verify takes ECDSA-Sig (described in RFC 5480) as input,
-		 * which is actually 2 'key_size'-bit integers encoded in
-		 * ASN.1.  Account for the ASN.1 encoding overhead here.
-		 *
-		 * NIST P192/256/384 may prepend a '0' to a coordinate to
-		 * indicate a positive integer. NIST P521 never needs it.
+		 * which is actually 2 'key_size'-bit integers.
 		 */
-		if (strcmp(pkey->pkey_algo, "ecdsa-nist-p521") != 0)
-			slen += 1;
-		/* Length of encoding the x & y coordinates */
-		slen = 2 * (slen + 2);
-		/*
-		 * If coordinate encoding takes at least 128 bytes then an
-		 * additional byte for length encoding is needed.
-		 */
-		info->max_sig_size = 1 + (slen >= 128) + 1 + slen;
+		if (strcmp(params->encoding, "x962") == 0) {
+			int slen = len;
+
+			/*
+			 * Account for the ASN.1 encoding overhead here.
+			 *
+			 * NIST P192/256/384 may prepend a '0' to a coordinate
+			 * to indicate a positive integer. NIST P521 does not.
+			 */
+			if (strcmp(pkey->pkey_algo, "ecdsa-nist-p521") != 0)
+				slen += 1;
+			/* Length of encoding the x & y coordinates */
+			slen = 2 * (slen + 2);
+			/*
+			 * If coordinate encoding takes at least 128 bytes then
+			 * an additional byte for length encoding is needed.
+			 */
+			info->max_sig_size = 1 + (slen >= 128) + 1 + slen;
+		} else if (strcmp(params->encoding, "p1363") == 0) {
+			info->max_sig_size = 2 * len;
+		}
 	} else {
 		info->max_data_size = len;
 		info->max_sig_size = len;
