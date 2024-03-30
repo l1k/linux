@@ -395,14 +395,14 @@ int sysfs_create_files(struct kobject *kobj, const struct attribute * const *ptr
 }
 EXPORT_SYMBOL_GPL(sysfs_create_files);
 
-/**
- * sysfs_add_file_to_group - add an attribute file to a pre-existing group.
- * @kobj: object we're acting for.
- * @attr: attribute descriptor.
- * @group: group name.
- */
-int sysfs_add_file_to_group(struct kobject *kobj,
-		const struct attribute *attr, const char *group)
+static const struct bin_attribute *to_bin_attr(const struct attribute *attr)
+{
+	return container_of(attr, struct bin_attribute, attr);
+}
+
+static int __sysfs_add_file_to_group(struct kobject *kobj,
+				     const struct attribute *attr,
+				     const char *group, bool is_bin_attr)
 {
 	struct kernfs_node *parent;
 	kuid_t uid;
@@ -420,13 +420,51 @@ int sysfs_add_file_to_group(struct kobject *kobj,
 		return -ENOENT;
 
 	kobject_get_ownership(kobj, &uid, &gid);
-	error = sysfs_add_file_mode_ns(parent, attr, attr->mode, uid, gid,
-				       NULL);
+	if (is_bin_attr) {
+		const struct bin_attribute *battr = to_bin_attr(attr);
+
+		error = sysfs_add_bin_file_mode_ns(parent, battr, attr->mode,
+						   battr->size, uid, gid, NULL);
+	} else {
+		error = sysfs_add_file_mode_ns(parent, attr,
+					       attr->mode, uid, gid, NULL);
+	}
 	kernfs_put(parent);
 
 	return error;
 }
+
+/**
+ * sysfs_add_file_to_group - add an attribute file to a pre-existing group.
+ * @kobj: object we're acting for.
+ * @attr: attribute descriptor.
+ * @group: group name.
+ *
+ * Returns 0 on success or error code on failure.
+ */
+int sysfs_add_file_to_group(struct kobject *kobj,
+			    const struct attribute *attr,
+			    const char *group)
+{
+	return __sysfs_add_file_to_group(kobj, attr, group, false);
+}
 EXPORT_SYMBOL_GPL(sysfs_add_file_to_group);
+
+/**
+ * sysfs_add_bin_file_to_group - add bin_attribute file to pre-existing group.
+ * @kobj: object we're acting for.
+ * @attr: attribute descriptor.
+ * @group: group name.
+ *
+ * Returns 0 on success or error code on failure.
+ */
+int sysfs_add_bin_file_to_group(struct kobject *kobj,
+				const struct bin_attribute *attr,
+				const char *group)
+{
+	return __sysfs_add_file_to_group(kobj, &attr->attr, group, true);
+}
+EXPORT_SYMBOL_GPL(sysfs_add_bin_file_to_group);
 
 /**
  * sysfs_chmod_file - update the modified mode value on an object attribute.
@@ -576,6 +614,20 @@ void sysfs_remove_file_from_group(struct kobject *kobj,
 	}
 }
 EXPORT_SYMBOL_GPL(sysfs_remove_file_from_group);
+
+/**
+ * sysfs_remove_bin_file_from_group - remove bin_attribute file from group.
+ * @kobj: object we're acting for.
+ * @attr: attribute descriptor.
+ * @group: group name.
+ */
+void sysfs_remove_bin_file_from_group(struct kobject *kobj,
+				      const struct bin_attribute *attr,
+				      const char *group)
+{
+	sysfs_remove_file_from_group(kobj, &attr->attr, group);
+}
+EXPORT_SYMBOL_GPL(sysfs_remove_bin_file_from_group);
 
 /**
  *	sysfs_create_bin_file - create binary file for object.
