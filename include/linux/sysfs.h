@@ -472,6 +472,12 @@ int sysfs_add_file_to_group(struct kobject *kobj,
 			const struct attribute *attr, const char *group);
 void sysfs_remove_file_from_group(struct kobject *kobj,
 			const struct attribute *attr, const char *group);
+int sysfs_add_bin_file_to_group(struct kobject *kobj,
+				const struct bin_attribute *attr,
+				const char *group);
+void sysfs_remove_bin_file_from_group(struct kobject *kobj,
+				      const struct bin_attribute *attr,
+				      const char *group);
 int sysfs_merge_group(struct kobject *kobj,
 		       const struct attribute_group *grp);
 void sysfs_unmerge_group(struct kobject *kobj,
@@ -678,6 +684,19 @@ static inline int sysfs_add_file_to_group(struct kobject *kobj,
 
 static inline void sysfs_remove_file_from_group(struct kobject *kobj,
 		const struct attribute *attr, const char *group)
+{
+}
+
+static inline int sysfs_add_bin_file_to_group(struct kobject *kobj,
+					      const struct bin_attribute *attr,
+					      const char *group)
+{
+	return 0;
+}
+
+static inline void sysfs_remove_bin_file_from_group(struct kobject *kobj,
+					      const struct bin_attribute *attr,
+					      const char *group)
 {
 }
 
