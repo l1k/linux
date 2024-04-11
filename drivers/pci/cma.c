@@ -199,6 +199,12 @@ void pci_cma_init(struct pci_dev *pdev)
 	spdm_authenticate(pdev->spdm_state);
 }
 
+void pci_cma_publish(struct pci_dev *pdev)
+{
+	if (!IS_ERR_OR_NULL(pdev->spdm_state))
+		spdm_publish_log(pdev->spdm_state);
+}
+
 /**
  * pci_cma_reauthenticate() - Perform CMA-SPDM authentication again
  * @pdev: Device to reauthenticate
