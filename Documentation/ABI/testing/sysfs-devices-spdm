@@ -77,3 +77,121 @@ Description:
 		SPDM does not specify how to notify the kernel of such events,
 		so unless reauthentication is manually initiated to update the
 		kernel's cache, the "slot[0-7]" files may contain stale data.
+
+
+What:		/sys/devices/.../signatures/
+What:		/sys/devices/.../signatures/[0-9]*_signature
+What:		/sys/devices/.../signatures/[0-9]*_transcript
+What:		/sys/devices/.../signatures/[0-9]*_hash_algorithm
+What:		/sys/devices/.../signatures/[0-9]*_combined_spdm_prefix
+What:		/sys/devices/.../signatures/[0-9]*_certificate_chain
+Date:		June 2024
+Contact:	Lukas Wunner <lukas@wunner.de>
+Description:
+		The "signatures" directory contains a log of signatures
+		received from the device to allow for their re-verification.
+		It is meant for remote attestation services which do not trust
+		the kernel to have verified the signatures correctly or which
+		want to apply policy constraints of their own.
+
+		Each signature is exposed as a separate file.  The filename
+		is prefixed with a monotonically increasing, unsigned, 32 bit
+		number, starting at 0.
+
+		The signature is computed over the "transcript" file, which is
+		a concatenation of all SPDM messages exchanged with the device.
+		SPDM 1.2 and newer hash the transcript with "hash_algorithm"
+		and prepend the "combined_spdm_prefix" before computing the
+		signature (SPDM 1.2.0 sec 15).  For SPDM 1.0 and 1.1, that step
+		is omitted and "combined_spdm_prefix" is an empty file.
+
+		The signature is verified against the leaf certificate in the
+		"certificate_chain".  To save memory, "certificate_chain" is
+		a symbolic link to the slot used for signature generation.
+		If the slot has since been provisioned with a different
+		certificate chain, verification of the signature will fail.
+
+		In bash syntax, the signature is verified as follows::
+
+		 # number of signature to verify
+		 num=0
+
+		 # split certificate chain into individual certificates
+		 openssl storeutl -text ${num}_certificate_chain | \
+		     csplit -z -f /tmp/cert - '/^[0-9]*: Certificate$/' '{*}'
+
+		 # extract public key from leaf certificate
+		 leaf_cert=$(\ls /tmp/cert?? | tail -1)
+		 openssl x509 -pubkey -in ${leaf_cert} -out ${leaf_cert}.pub
+
+		 # verify signature
+		 if [ \! -s ${num}_combined_spdm_prefix ] ; then
+		     # SPDM 1.0 and 1.1
+		     openssl dgst -$(cat ${num}_hash_algorithm) \
+		         -signature ${num}_signature -verify ${leaf_cert}.pub \
+		         ${num}_transcript
+		 else
+		     # SPDM 1.2 and newer
+		     openssl dgst -$(cat ${num}_hash_algorithm) \
+		         -binary -out /tmp/transcript_hashed ${num}_transcript
+		     openssl dgst -$(cat ${num}_hash_algorithm) \
+		         -signature ${num}_signature -verify ${leaf_cert}.pub \
+		         ${num}_combined_spdm_prefix /tmp/transcript_hashed
+		 fi
+
+		Note: The above works for RSA signatures, but not for ECDSA.
+		SPDM encodes ECDSA signatures in P1363 format (concatenation of
+		two raw integers), whereas openssl only supports X9.62 format
+		(ASN.1 DER sequence of two integers).  There is no command line
+		utility to convert between the two formats, but most popular
+		crypto libraries offer conversion routines:
+
+		| https://github.com/java-crypto/cross_platform_crypto/blob/main/docs/ecdsa_signature_conversion.md
+
+		The "transcript" file can be fed to a protocol dissector to
+		examine the SPDM messages it contains:
+
+		| https://github.com/th-duvanel/spdm-wid
+		| https://github.com/jyao1/wireshark-spdm
+		| https://github.com/DMTF/spdm-dump
+
+		Note:  To ease signature verification, the "transcript" file
+		does not contain the trailing signature.  However the signature
+		is part of the final CHALLENGE_AUTH message, so the protocol
+		dissector needs to be fed the concatenation of "transcript"
+		and "signature".
+
+
+What:		/sys/devices/.../signatures/[0-9]*_type
+Date:		June 2024
+Contact:	Lukas Wunner <lukas@wunner.de>
+Description:
+		This file contains the type of event that led to signature
+		generation.  It is one of (sans quotes):
+
+		"responder-challenge_auth signing"
+
+
+What:		/sys/devices/.../signatures/[0-9]*_requester_nonce
+What:		/sys/devices/.../signatures/[0-9]*_responder_nonce
+Date:		June 2024
+Contact:	Lukas Wunner <lukas@wunner.de>
+Description:
+		These files contain the 32 byte nonce chosen by requester and
+		responder.  They allow remote attestation services to verify
+		freshness (uniqueness) of the nonces.  Nonces used more than
+		once can be identified with::
+
+		 # hexdump -e '32/1 "%02x" "\n"' [0-9]*_nonce | sort | \
+		   uniq -c | grep -v '^      1'
+
+		Remote attestation services may also want to verify that the
+		entropy of the nonces is acceptable::
+
+		 # ent 0_requester_nonce
+
+		Note:  The nonces are also contained in the "transcript", but
+		their offsets within the transcript are variable.  It would be
+		necessary to parse the SPDM messages in the transcript to find
+		and extract the nonces, which is cumbersome.  That's why they
+		are exposed as separate files.

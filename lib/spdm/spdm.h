@@ -466,6 +466,10 @@ struct spdm_error_rsp {
  *	end of transcript.  If another message is transmitted, it is appended
  *	at this position.
  * @transcript_max: Allocation size of @transcript.  Multiple of PAGE_SIZE.
+ * @log: Linked list of past authentication events.  Each list entry is of type
+ *	struct spdm_log_entry and is exposed as several files in sysfs.
+ * @log_counter: Number of generated log entries so far.  Will be prefixed to
+ *	the sysfs files of the next generated log entry.
  */
 struct spdm_state {
 	struct device *dev;
@@ -506,6 +510,10 @@ struct spdm_state {
 	void *transcript;
 	void *transcript_end;
 	size_t transcript_max;
+
+	/* Signatures Log */
+	struct list_head log;
+	u32 log_counter;
 };
 
 ssize_t spdm_exchange(struct spdm_state *spdm_state,
@@ -522,5 +530,17 @@ int spdm_verify_signature(struct spdm_state *spdm_state,
 			  const char *spdm_context);
 
 void spdm_reset(struct spdm_state *spdm_state);
+
+#ifdef CONFIG_SYSFS
+void spdm_create_log_entry(struct spdm_state *spdm_state,
+			   const char *spdm_context, u8 slot,
+			   size_t req_nonce_off, size_t rsp_nonce_off);
+void spdm_destroy_log(struct spdm_state *spdm_state);
+#else
+static inline void spdm_create_log_entry(struct spdm_state *spdm_state,
+			   const char *spdm_context, u8 slot,
+			   size_t req_nonce_off, size_t rsp_nonce_off) { }
+static inline void spdm_destroy_log(struct spdm_state *spdm_state) { }
+#endif
 
 #endif /* _LIB_SPDM_H_ */
