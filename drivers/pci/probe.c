@@ -2614,6 +2614,7 @@ void pci_device_add(struct pci_dev *dev, struct pci_bus *bus)
 	ret = device_add(&dev->dev);
 	WARN_ON(ret < 0);
 
+	pci_cma_publish(dev);
 	pci_npem_create(dev);
 }
 
