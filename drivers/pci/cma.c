@@ -193,6 +193,20 @@ void pci_cma_init(struct pci_dev *pdev)
 	spdm_authenticate(pdev->spdm_state);
 }
 
+#ifdef CONFIG_SYSFS
+void pci_cma_publish(struct pci_dev *pdev)
+{
+	if (pdev->spdm_state)
+		spdm_publish_log(pdev->spdm_state);
+}
+
+void pci_cma_unpublish(struct pci_dev *pdev)
+{
+	if (pdev->spdm_state)
+		spdm_unpublish_log(pdev->spdm_state);
+}
+#endif
+
 /**
  * pci_cma_reauthenticate() - Perform CMA-SPDM authentication again
  * @pdev: Device to reauthenticate

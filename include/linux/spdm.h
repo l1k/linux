@@ -34,6 +34,14 @@ int spdm_authenticate(struct spdm_state *spdm_state);
 
 void spdm_destroy(struct spdm_state *spdm_state);
 
+#ifdef CONFIG_SYSFS
 extern const struct attribute_group spdm_attr_group;
+extern const struct attribute_group spdm_signatures_group;
+void spdm_publish_log(struct spdm_state *spdm_state);
+void spdm_unpublish_log(struct spdm_state *spdm_state);
+#else
+static inline void spdm_publish_log(struct spdm_state *spdm_state) { }
+static inline void spdm_unpublish_log(struct spdm_state *spdm_state) { }
+#endif
 
 #endif

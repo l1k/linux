@@ -402,6 +402,7 @@ struct spdm_state *spdm_create(struct device *dev, spdm_transport *transport,
 	spdm_state->validate = validate;
 
 	mutex_init(&spdm_state->lock);
+	INIT_LIST_HEAD(&spdm_state->log);
 
 	return spdm_state;
 }
@@ -415,6 +416,7 @@ EXPORT_SYMBOL_GPL(spdm_create);
 void spdm_destroy(struct spdm_state *spdm_state)
 {
 	spdm_reset(spdm_state);
+	spdm_destroy_log(spdm_state);
 	mutex_destroy(&spdm_state->lock);
 	kfree(spdm_state);
 }
