@@ -8,4 +8,5 @@
 obj-$(CONFIG_SPDM) += spdm.o
 
 spdm-y := core.o req-authenticate.o
+spdm-$(CONFIG_NET) += req-netlink.o netlink-autogen.o
 spdm-$(CONFIG_SYSFS) += req-sysfs.o

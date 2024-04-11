@@ -175,3 +175,67 @@ const struct attribute_group spdm_certificates_group = {
 	.bin_attrs = spdm_certificates_bin_attrs,
 	.is_bin_visible = spdm_certificates_are_visible,
 };
+
+/**
+ * struct spdm_log_entry - log entry representing one received SPDM signature
+ *
+ * @list: List node.  Added to the @log list in struct spdm_state.
+ * @sig: sysfs attribute of received signature (located at end of transcript).
+ * @req_nonce: sysfs attribute of requester nonce (located within transcript).
+ * @rsp_nonce: sysfs attribute of responder nonce (located within transcript).
+ * @transcript: sysfs attribute of transcript (concatenation of all SPDM
+ *	messages exchanged during an authentication sequence) sans trailing
+ *	signature (to simplify signature verification by user space).
+ * @combined_prefix: sysfs attribute of combined_spdm_prefix
+ *	(SPDM 1.2.0 margin no 806, needed to verify signature).
+ * @spdm_context: sysfs attribute of spdm_context
+ *	(SPDM 1.2.0 margin no 803, needed to create combined_spdm_prefix).
+ * @hash_alg: sysfs attribute of hash algorithm (needed to verify signature).
+ * @sig_name: Name of @sig attribute (with prepended signature counter).
+ * @req_nonce_name: Name of @req_nonce attribute.
+ * @rsp_nonce_name: Name of @rsp_nonce attribute.
+ * @transcript_name: Name of @transcript attribute.
+ * @combined_prefix_name: Name of @combined_prefix attribute.
+ * @spdm_context_name: Name of @spdm_context attribute.
+ * @hash_alg_name: Name of @hash_alg attribute.
+ * @counter: Signature counter (needed to create certificate_chain symlink).
+ * @version: Negotiated SPDM version
+ *	(SPDM 1.2.0 margin no 803, needed to create combined_spdm_prefix).
+ * @slot: Slot which was used to generate the signature
+ *	(needed to create certificate_chain symlink).
+ */
+struct spdm_log_entry {
+	struct list_head list;
+	struct bin_attribute sig;
+	struct bin_attribute req_nonce;
+	struct bin_attribute rsp_nonce;
+	struct bin_attribute transcript;
+	struct bin_attribute combined_prefix;
+	struct dev_ext_attribute spdm_context;
+	struct dev_ext_attribute hash_alg;
+	char sig_name[sizeof(__stringify(UINT_MAX) "_signature")];
+	char req_nonce_name[sizeof(__stringify(UINT_MAX) "_requester_nonce")];
+	char rsp_nonce_name[sizeof(__stringify(UINT_MAX) "_responder_nonce")];
+	char transcript_name[sizeof(__stringify(UINT_MAX) "_transcript")];
+	char combined_prefix_name[sizeof(__stringify(UINT_MAX) "_combined_spdm_prefix")];
+	char spdm_context_name[sizeof(__stringify(UINT_MAX) "_type")];
+	char hash_alg_name[sizeof(__stringify(UINT_MAX) "_hash_algorithm")];
+	u32 counter;
+	u8 version;
+	u8 slot;
+};
+
+/**
+ * spdm_create_log_entry() - Allocate log entry for one received SPDM signature
+ *
+ * @spdm_state: SPDM session state
+ * @spdm_context: SPDM context (needed to create combined_spdm_prefix)
+ * @slot: Slot which was used to generate the signature
+ *	(needed to create certificate_chain symlink)
+ * @req_nonce_off: Requester nonce offset within the transcript
+ * @rsp_nonce_off: Responder nonce offset within the transcript
+ *
+ * Allocate and populate a struct spdm_log_entry upon device authentication.
+ * Publish it in sysfs if the device has already been registered through
+ * device_add().
+ */

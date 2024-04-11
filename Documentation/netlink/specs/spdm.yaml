@@ -1,0 +1,172 @@
+# SPDX-License-Identifier: ((GPL-2.0 WITH Linux-syscall-note) OR BSD-3-Clause)
+---
+name: spdm
+
+doc: |
+  DMTF Security Protocol and Data Model (SPDM)
+  https://www.dmtf.org/dsp/DSP0274
+
+protocol: genetlink
+
+uapi-header: linux/spdm_netlink.h
+
+definitions:
+  -
+    type: enum
+    name: spdm-reqrsp-code
+    doc: SPDM request or response code of a signed message (SPDM 1.0.0 table 4)
+    entries:
+      -
+        name: spdm-challenge-auth
+        value: 0x03
+      -
+        name: spdm-endpoint-info
+        value: 0x07
+      -
+        name: spdm-measurements
+        value: 0x60
+      -
+        name: spdm-key-exchange-rsp
+        value: 0x64
+      -
+        name: spdm-finish
+        value: 0xe5
+    header: uapi/linux/spdm.h
+  -
+    type: enum
+    name: hash-algo
+    doc: SPDM-supported hash algorithm (SPDM 1.0.0 table 13)
+    entries:
+      -
+        name: hash-algo-sha256
+        value: 4
+      -
+        name: hash-algo-sha384
+        value: 5
+      -
+        name: hash-algo-sha512
+        value: 6
+      -
+        name: hash-algo-sha3-256
+        value: 20
+      -
+        name: hash-algo-sha3-384
+        value: 21
+      -
+        name: hash-algo-sha3-512
+        value: 22
+    header: uapi/linux/hash_info.h
+
+attribute-sets:
+  -
+    name: sig
+    doc: |
+      Signature received from a device, together with all ancillary data
+      needed for re-verification.
+
+      Meant for remote attestation services which do not trust the kernel
+      to have verified the signature correctly or which want to apply
+      policy constraints of their own.
+
+      The signature is computed over the %transcript attribute, which is
+      a concatenation of all SPDM messages exchanged with the device.
+      The transcript may occupy multiple megabytes, exceeding the maximum
+      size of a netlink attribute.  It may therefore be split across several
+      netlink messages.  The first netlink message contains a first portion
+      of the transcript as well as all other attributes.  Any subsequent
+      netlink message contains only a single %transcript attribute which
+      continues the already transmitted portions of the transcript.
+
+      SPDM 1.2 and newer hash the transcript with %hash-algo and prepend
+      %combined-spdm-prefix before computing the signature (SPDM 1.2.0
+      sec 15).  For SPDM 1.0 and 1.1, that step is omitted and the
+      %combined-spdm-prefix attribute is not included in the message.
+
+      The signature is verified against the leaf certificate in %slot.
+      To save memory, only the slot number is included in the message,
+      not the full certificate chain.  Note that if the slot has since
+      been provisioned with a different certificate chain, re-verification
+      of the signature will fail.
+    attributes:
+      -
+        name: device
+        doc: |
+          Device generating the signature, uniquely identified by its
+          path under sysfs.
+        type: string
+      -
+        name: rsp-code
+        doc: |
+          SPDM response code of the message containing the signature,
+          to determine what kind of event caused signature generation.
+          Equivalent to the "context" string of SPDM 1.2.0 sec 15,
+          but represented numerically for easier parsing.
+        type: u8
+        enum: spdm-reqrsp-code
+      -
+        name: slot
+        doc: |
+          Certificate slot used for signature generation.
+        type: u8
+      -
+        name: hash-algo
+        doc: |
+          Hash algorithm used for signature generation.
+        type: u16
+        enum: hash-algo
+      -
+        name: sig-offset
+        doc: |
+          Offset of signature in @transcript.  The signature is located
+          at the end of @transcript, hence its size equals @transcript
+          size minus this offset.
+        type: u32
+      -
+        name: req-nonce-offset
+        doc: |
+          Offset of 32 byte nonce chosen by requester in @transcript.
+          Allows remote attestation services to verify freshness
+          (uniqueness) and entropy adequacy of the nonce.
+        type: u32
+      -
+        name: rsp-nonce-offset
+        doc: |
+          Offset of 32 byte nonce chosen by responder in @transcript.
+          Allows remote attestation services to verify freshness
+          (uniqueness) and entropy adequacy of the nonce.
+        type: u32
+      -
+        name: combined-spdm-prefix
+        doc: |
+          Combined SPDM prefix used for signature generation (SPDM 1.2.0
+          sec 15).  Only included in the message with SPDM version 1.2.0
+          or newer.
+        type: binary
+        checks:
+          exact-len: 100
+      -
+        name: transcript
+        doc: |
+          SPDM transcript used for signature generation.  The signature
+          itself is located at the end of the transcript.
+        type: binary
+        multi-attr: true
+
+operations:
+  list:
+    -
+      name: sig
+      doc: Signature event
+      attribute-set: sig
+      event:
+        attributes:
+          - sig
+      mcgrp: sig
+
+mcast-groups:
+  list:
+    -
+      name: sig
+
+kernel-family:
+  headers: ["netlink-autogen.h"]

@@ -622,13 +622,13 @@ static size_t spdm_challenge_rsp_sz(struct spdm_state *spdm_state,
 
 static int spdm_challenge(struct spdm_state *spdm_state, u8 slot)
 {
+	size_t req_sz, rsp_sz, rsp_sz_max, req_nonce_off, rsp_nonce_off;
 	struct spdm_challenge_rsp *rsp __free(kfree);
 	struct spdm_challenge_req req = {
 		.code = SPDM_CHALLENGE,
 		.param1 = slot,
 		.param2 = 0, /* No measurement summary hash */
 	};
-	size_t req_sz, rsp_sz, rsp_sz_max;
 	int rc, length;
 
 	get_random_bytes(&req.nonce, sizeof(req.nonce));
@@ -654,10 +654,15 @@ static int spdm_challenge(struct spdm_state *spdm_state, u8 slot)
 		return -EIO;
 	}
 
+	req_nonce_off = spdm_state->transcript_end - spdm_state->transcript +
+			offsetof(typeof(req), nonce);
 	rc = spdm_append_transcript(spdm_state, &req, req_sz);
 	if (rc)
 		return rc;
 
+	rsp_nonce_off = spdm_state->transcript_end - spdm_state->transcript +
+			sizeof(*rsp) +
+			hash_digest_size[spdm_state->base_hash_alg];
 	rc = spdm_append_transcript(spdm_state, rsp, rsp_sz);
 	if (rc)
 		return rc;
@@ -670,6 +675,9 @@ static int spdm_challenge(struct spdm_state *spdm_state, u8 slot)
 	else
 		dev_info(spdm_state->dev,
 			 "Authenticated with certificate slot %u\n", slot);
+
+	spdm_netlink_sig_event(spdm_state, SPDM_CHALLENGE_AUTH, slot,
+			       req_nonce_off, rsp_nonce_off, spdm_context);
 
 	return rc;
 }

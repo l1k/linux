@@ -17,6 +17,8 @@
 
 #define dev_fmt(fmt) "SPDM: " fmt
 
+#include "netlink-autogen.h"
+
 #include <linux/bitfield.h>
 #include <linux/mutex.h>
 #include <linux/spdm.h>
@@ -505,5 +507,17 @@ int spdm_verify_signature(struct spdm_state *spdm_state,
 			  const char *spdm_context);
 
 void spdm_reset(struct spdm_state *spdm_state);
+
+#ifdef CONFIG_NET
+int spdm_netlink_sig_event(struct spdm_state *spdm_state,
+			   enum spdm_reqrsp_code rsp_code, u8 slot,
+			   size_t req_nonce_off, size_t rsp_nonce_off,
+			   const char *spdm_context);
+#else
+static inline int spdm_netlink_sig_event(struct spdm_state *spdm_state,
+			   enum spdm_reqrsp_code rsp_code, u8 slot,
+			   size_t req_nonce_off, size_t rsp_nonce_off,
+			   const char *spdm_context) { return 0; }
+#endif
 
 #endif /* _LIB_SPDM_H_ */
