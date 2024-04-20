@@ -215,3 +215,32 @@ Description:
 		necessary to parse the SPDM messages in the transcript to find
 		and extract the nonces, which is cumbersome.  That's why they
 		are exposed as separate files.
+
+
+What:		/sys/devices/.../signatures/next_requester_nonce
+Date:		June 2024
+Contact:	Lukas Wunner <lukas@wunner.de>
+Description:
+		If you do not trust the kernel to always use a fresh nonce,
+		write 32 bytes to this file to set the requester nonce used
+		in the next SPDM authentication sequence.
+
+		Meant for remote attestation services.  You are responsible
+		for providing a nonce with sufficient entropy.  The kernel
+		only uses the nonce once, so provide a new one every time
+		you reauthenticate the device.  If you do not provide a
+		nonce, the kernel generates a random one.
+
+		After the nonce has been consumed, it becomes readable as
+		the newest [0-9]*_requester_nonce, which proves its usage::
+
+		 # dd if=/dev/random bs=32 count=1 | \
+		   tee signatures/next_requester_nonce | hexdump
+		 0000000 e0 77 91 54 bd 56 99 c2 ea 4f 0b 1a 7f ba 6e 59
+		 0000010 8f ee f6 b2 26 82 58 34 9e e5 8c 8a 31 58 29 7e
+
+		 # echo re > authenticated
+
+		 # hexdump $(\ls -t signatures/[0-9]*_requester_nonce | head -1)
+		 0000000 e0 77 91 54 bd 56 99 c2 ea 4f 0b 1a 7f ba 6e 59
+		 0000010 8f ee f6 b2 26 82 58 34 9e e5 8c 8a 31 58 29 7e

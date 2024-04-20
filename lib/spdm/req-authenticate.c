@@ -626,7 +626,13 @@ static int spdm_challenge(struct spdm_state *spdm_state, u8 slot, bool verify)
 	};
 	int rc, length;
 
-	get_random_bytes(&req.nonce, sizeof(req.nonce));
+	if (spdm_state->next_nonce) {
+		memcpy(&req.nonce, spdm_state->next_nonce, sizeof(req.nonce));
+		kfree(spdm_state->next_nonce);
+		spdm_state->next_nonce = NULL;
+	} else {
+		get_random_bytes(&req.nonce, sizeof(req.nonce));
+	}
 
 	if (spdm_state->version <= 0x12)
 		req_sz = offsetofend(typeof(req), nonce);

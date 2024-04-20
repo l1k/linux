@@ -433,6 +433,7 @@ void spdm_destroy(struct spdm_state *spdm_state)
 	spdm_reset(spdm_state);
 	spdm_destroy_log(spdm_state);
 	mutex_destroy(&spdm_state->lock);
+	kfree(spdm_state->next_nonce);
 	kfree(spdm_state);
 }
 EXPORT_SYMBOL_GPL(spdm_destroy);
