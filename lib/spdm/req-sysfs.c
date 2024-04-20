@@ -177,13 +177,48 @@ const struct attribute_group spdm_certificates_group = {
 
 /* signatures attributes */
 
+static umode_t spdm_signatures_are_visible(struct kobject *kobj,
+					   const struct bin_attribute *a, int n)
+{
+	struct device *dev = kobj_to_dev(kobj);
+	struct spdm_state *spdm_state = dev_to_spdm_state(dev);
+
+	if (IS_ERR_OR_NULL(spdm_state))
+		return SYSFS_GROUP_INVISIBLE;
+
+	return a->attr.mode;
+}
+
+static ssize_t next_requester_nonce_write(struct file *file,
+					  struct kobject *kobj,
+					  struct bin_attribute *attr,
+					  char *buf, loff_t off, size_t count)
+{
+	struct device *dev = kobj_to_dev(kobj);
+	struct spdm_state *spdm_state = dev_to_spdm_state(dev);
+
+	guard(mutex)(&spdm_state->lock);
+
+	if (!spdm_state->next_nonce) {
+		spdm_state->next_nonce = kmalloc(SPDM_NONCE_SZ, GFP_KERNEL);
+		if (!spdm_state->next_nonce)
+			return -ENOMEM;
+	}
+
+	memcpy(spdm_state->next_nonce + off, buf, count);
+	return count;
+}
+static BIN_ATTR_WO(next_requester_nonce, SPDM_NONCE_SZ);
+
 static struct bin_attribute *spdm_signatures_bin_attrs[] = {
+	&bin_attr_next_requester_nonce,
 	NULL
 };
 
 const struct attribute_group spdm_signatures_group = {
 	.name = "signatures",
 	.bin_attrs = spdm_signatures_bin_attrs,
+	.is_bin_visible = spdm_signatures_are_visible,
 };
 
 static unsigned int spdm_max_log_sz = SZ_16M; /* per device */
