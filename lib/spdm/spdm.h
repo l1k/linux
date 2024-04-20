@@ -465,6 +465,9 @@ struct spdm_error_rsp {
  *	struct spdm_log_entry and is exposed as several files in sysfs.
  * @log_counter: Number of generated log entries so far.  Will be prefixed to
  *	the sysfs files of the next generated log entry.
+ * @next_nonce: Requester nonce to be used for the next authentication
+ *	sequence.  Populated from user space through sysfs.
+ *	If user space does not provide a nonce, the kernel uses a random one.
  */
 struct spdm_state {
 	struct device *dev;
@@ -506,6 +509,7 @@ struct spdm_state {
 	/* Event Log */
 	struct list_head log;
 	u32 log_counter;
+	u8 *next_nonce;
 };
 
 ssize_t spdm_exchange(struct spdm_state *spdm_state,
