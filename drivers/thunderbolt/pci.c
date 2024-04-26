@@ -16,6 +16,42 @@
 #include "tb.h"
 #include "tunnel.h"
 
+static int tb_pci_set_removable(struct pci_dev *pdev, void *data)
+{
+	dev_set_removable(&pdev->dev, DEVICE_REMOVABLE);
+	pdev->untrusted = true;
+	return 0;
+}
+
+static void tb_pci_fixup(struct tb_port *port)
+{
+	struct pci_dev *upstream;
+
+	/*
+	 * Standalone Host Routers below Root Ports which are declared
+	 * "ExternalFacingPort" in ACPI are incorrectly deemed removable.
+	 * Avoid by marking PCIe Adapters on a root switch as fixed.
+	 */
+	if (port->sw == port->sw->tb->root_switch) {
+		dev_set_removable(&port->pdev->dev, DEVICE_FIXED);
+		port->pdev->untrusted = false;
+		port->pdev->external_facing = true;
+
+		upstream = pci_upstream_bridge(port->pdev);
+		if (upstream) {
+			dev_set_removable(&upstream->dev, DEVICE_FIXED);
+			upstream->untrusted = false;
+		}
+
+		/*
+		 * Mark attached Thunderbolt devices as removable in case
+		 * ACPI neglected to set the "ExternalFacingPort" property.
+		 */
+		pci_walk_bus(port->pdev->subordinate, tb_pci_set_removable,
+			     NULL);
+	}
+}
+
 /**
  * tb_pci_find_port() - locate PCIe Adapter corresponding to given PCI device
  * @tb: Thunderbolt domain
@@ -118,6 +154,7 @@ static int tb_pci_notifier_call(struct notifier_block *nb,
 	case BUS_NOTIFY_ADD_DEVICE:
 		port->pdev = pdev;
 		tb_port_dbg(port, "associated with %s\n", pci_name(pdev));
+		tb_pci_fixup(port);
 		break;
 	case BUS_NOTIFY_DEL_DEVICE:
 		port->pdev = NULL;
@@ -148,6 +185,7 @@ static int tb_pci_associate(struct pci_dev *pdev, void *data)
 	if (port) {
 		port->pdev = pdev;
 		tb_port_dbg(port, "associated with %s\n", pci_name(pdev));
+		tb_pci_fixup(port);
 	}
 
 	return 0;
