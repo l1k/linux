@@ -457,6 +457,28 @@ struct tb_path {
 #define TB_CL1			BIT(1)
 #define TB_CL2			BIT(2)
 
+#define MAX_GROUPS		7	/* max Group_ID is 7 */
+
+/**
+ * struct tb_cm - Thunderbolt software connection manager
+ * @tunnel_list: List of active tunnels
+ * @dp_resources: List of available DP resources for DP tunneling
+ * @hotplug_active: tb_handle_hotplug will stop progressing plug
+ *		    events and exit if this is not set (it needs to
+ *		    acquire the lock one more time). Used to drain wq
+ *		    after cfg has been paused.
+ * @remove_work: Work used to remove any unplugged routers after
+ *		 runtime resume
+ * @groups: Bandwidth groups used in this domain.
+ */
+struct tb_cm {
+	struct list_head tunnel_list;
+	struct list_head dp_resources;
+	bool hotplug_active;
+	struct delayed_work remove_work;
+	struct tb_bandwidth_group groups[MAX_GROUPS];
+};
+
 /**
  * struct tb_cm_ops - Connection manager specific operations vector
  * @driver_ready: Called right after control channel is started. Used by

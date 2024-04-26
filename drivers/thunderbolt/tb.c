@@ -35,33 +35,11 @@
  */
 #define TB_ASYM_THRESHOLD	45000
 
-#define MAX_GROUPS		7	/* max Group_ID is 7 */
-
 static unsigned int asym_threshold = TB_ASYM_THRESHOLD;
 module_param_named(asym_threshold, asym_threshold, uint, 0444);
 MODULE_PARM_DESC(asym_threshold,
 		"threshold (Mb/s) when to Gen 4 switch link symmetry. 0 disables. (default: "
 		__MODULE_STRING(TB_ASYM_THRESHOLD) ")");
-
-/**
- * struct tb_cm - Simple Thunderbolt connection manager
- * @tunnel_list: List of active tunnels
- * @dp_resources: List of available DP resources for DP tunneling
- * @hotplug_active: tb_handle_hotplug will stop progressing plug
- *		    events and exit if this is not set (it needs to
- *		    acquire the lock one more time). Used to drain wq
- *		    after cfg has been paused.
- * @remove_work: Work used to remove any unplugged routers after
- *		 runtime resume
- * @groups: Bandwidth groups used in this domain.
- */
-struct tb_cm {
-	struct list_head tunnel_list;
-	struct list_head dp_resources;
-	bool hotplug_active;
-	struct delayed_work remove_work;
-	struct tb_bandwidth_group groups[MAX_GROUPS];
-};
 
 static inline struct tb *tcm_to_tb(struct tb_cm *tcm)
 {
