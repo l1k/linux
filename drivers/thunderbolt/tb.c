@@ -2810,6 +2810,14 @@ static int tb_start(struct tb *tb, bool reset)
 		return ret;
 	}
 
+	if (!tb_port_is_nhi(tb_upstream_port(tb->root_switch))) {
+		tb_err(tb, "Host Interface exposed by a Device Router\n");
+		tb_switch_remove(tb->root_switch);
+		dev_set_removable(&tb->nhi->pdev->dev, DEVICE_REMOVABLE);
+		tb->nhi->pdev->untrusted = true;
+		return -ENODEV;
+	}
+
 	/*
 	 * To support highest CLx state, we set host router's TMU to
 	 * Normal mode.
