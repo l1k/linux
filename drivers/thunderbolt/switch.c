@@ -3312,6 +3312,10 @@ int tb_switch_add(struct tb_switch *sw)
 		ret = tb_switch_tmu_init(sw);
 		if (ret)
 			return ret;
+
+		ret = usb4_switch_get_pcie_down_entries(sw);
+		if (ret)
+			return ret;
 	}
 
 	ret = tb_switch_port_hotplug_enable(sw);

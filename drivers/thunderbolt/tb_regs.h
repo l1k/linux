@@ -238,8 +238,31 @@ enum usb4_switch_op {
 	USB4_SWITCH_OP_NVM_SET_OFFSET = 0x23,
 	USB4_SWITCH_OP_DROM_READ = 0x24,
 	USB4_SWITCH_OP_NVM_SECTOR_SIZE = 0x25,
+	USB4_SWITCH_OP_GET_PCIE_DOWN_ENTRY = 0x30,
 	USB4_SWITCH_OP_BUFFER_ALLOC = 0x33,
 };
+
+struct usb4_get_pcie_down_metadata {
+	u8 total_num;
+	u8 entry_index;
+	u16 reserved;
+} __packed;
+
+struct usb4_get_pcie_down_entry {
+	/* DWORD 0 */
+	u8 byte0;
+	u8 reserved1;
+	u8 reserved2;
+	u8 reserved3;
+	/* DWORD 1 */
+	u8 devfn;
+	u8 bus;
+	u16 fpb;
+	/* DWORD 2-15 reserved */
+} __packed;
+
+#define USB4_GET_PCIE_DOWN_NATIVE		BIT(0)
+#define USB4_GET_PCIE_DOWN_NUM			GENMASK(6, 1)
 
 /* Router TMU configuration */
 #define TMU_RTR_CS_0				0x00

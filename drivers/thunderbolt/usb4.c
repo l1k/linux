@@ -721,6 +721,71 @@ int usb4_switch_nvm_authenticate_status(struct tb_switch *sw, u32 *status)
 	return 0;
 }
 
+#ifdef CONFIG_PCI
+/**
+ * usb4_switch_get_pcie_down_entries() - Obtain PCIe Device/Function numbers
+ * @sw: USB4 Router
+ *
+ * Use the "Get PCIe Downstream Entry Mapping" Router Operation (USB4 v2.0 sec
+ * 8.3.1.3.1) to obtain the PCIe Device/Function number of every PCIe Adapter
+ * on @sw and store it in struct tb_port.  This allows associating an Adapter
+ * with a PCI device.  On pre-USB4 Routers, the same information is instead
+ * obtained from DROM.  On TBT3-compatible USB4 Routers, the information is
+ * first obtained from DROM and then augmented or overridden by this function.
+ *
+ * Return %0 on success or a negative errno on failure.
+ */
+int usb4_switch_get_pcie_down_entries(struct tb_switch *sw)
+{
+	struct usb4_get_pcie_down_metadata metadata;
+	struct usb4_get_pcie_down_entry entry;
+	u8 status, native, num, remaining = 0;
+	int ret;
+
+	if (!tb_switch_is_usb4(sw))
+		return 0;
+
+	do {
+		memset(&metadata, 0, sizeof(metadata));
+		ret = usb4_switch_op_data(sw,
+					  USB4_SWITCH_OP_GET_PCIE_DOWN_ENTRY,
+					  (u32 *)&metadata, &status, NULL, 0,
+					  &entry, sizeof(entry) / sizeof(u32));
+		if (ret == -EOPNOTSUPP)
+			return 0; /* does not support PCIe tunneling */
+		if (ret)
+			return ret;
+		if (status)
+			return -EIO;
+
+		/* on first iteration we learn Total Number of Entries */
+		if (!remaining) {
+			remaining = metadata.total_num;
+			if (!remaining)
+				return 0;
+		}
+		remaining--;
+
+		native = FIELD_GET(USB4_GET_PCIE_DOWN_NATIVE, entry.byte0);
+		num = FIELD_GET(USB4_GET_PCIE_DOWN_NUM, entry.byte0);
+		if (!native && !entry.fpb &&
+		    num <= sw->config.max_port_number &&
+		    tb_port_is_pcie_down(&sw->ports[num]))
+			sw->ports[num].devfn = entry.devfn;
+
+		tb_sw_dbg(sw, "Get PCIe Down Entry %hhu/%hhu: %s %hhu => "
+			  "FPB %#x Non-FPB %02x:%02x.%d\n",
+			  metadata.entry_index, metadata.total_num,
+			  native ? "Native Link" : "Port", num,
+			  entry.fpb, entry.bus, PCI_SLOT(entry.devfn),
+			  PCI_FUNC(entry.devfn));
+
+	} while (remaining);
+
+	return 0;
+}
+#endif
+
 /**
  * usb4_switch_credits_init() - Read buffer allocation parameters
  * @sw: USB4 router
