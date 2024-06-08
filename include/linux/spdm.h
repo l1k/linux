@@ -35,5 +35,6 @@ int spdm_authenticate(struct spdm_state *spdm_state);
 void spdm_destroy(struct spdm_state *spdm_state);
 
 extern const struct attribute_group spdm_attr_group;
+extern const struct attribute_group spdm_certificates_group;
 
 #endif
