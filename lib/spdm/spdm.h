@@ -436,6 +436,8 @@ struct spdm_error_rsp {
  * @base_hash_alg: Hash algorithm for signature verification of
  *	CHALLENGE_AUTH messages.
  *	Selected by responder during NEGOTIATE_ALGORITHMS exchange.
+ * @supported_slots: Bitmask of responder's supported certificate slots.
+ *	Received during GET_DIGESTS exchange (from SPDM 1.3).
  * @provisioned_slots: Bitmask of responder's provisioned certificate slots.
  *	Received during GET_DIGESTS exchange.
  * @base_asym_enc: Human-readable name of @base_asym_alg's signature encoding.
@@ -480,6 +482,7 @@ struct spdm_state {
 	u32 rsp_caps;
 	u32 base_asym_alg;
 	u32 base_hash_alg;
+	unsigned long supported_slots;
 	unsigned long provisioned_slots;
 
 	/* Signature algorithm */

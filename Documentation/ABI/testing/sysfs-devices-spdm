@@ -29,3 +29,51 @@ Description:
 		The reason why authentication support could not be determined
 		is apparent from "dmesg".  To re-probe authentication support
 		of PCI devices, exercise the "remove" and "rescan" attributes.
+
+
+What:		/sys/devices/.../certificates/
+What:		/sys/devices/.../certificates/slot[0-7]
+Date:		June 2024
+Contact:	Lukas Wunner <lukas@wunner.de>
+Description:
+		The "certificates" directory provides access to the certificate
+		chains contained in the up to 8 slots of a device.
+
+		A certificate chain is the concatenation of one or more ASN.1
+		DER-encoded X.509 v3 certificates (SPDM 1.0.0 sec 4.9.2.1).
+		It can be examined as follows::
+
+		 # openssl storeutl -text certificates/slot0
+
+		A common use case is to add the first certificate in a chain
+		to the keyring of trusted root certificates (".cma" in this
+		example) after comparing its fingerprint to the one provided
+		by the device manufacturer::
+
+		 # openssl x509 -in certificates/slot0 -fingerprint -nocert
+		 # keyctl padd asymmetric "" %:.cma < certificates/slot0
+		 # echo re > authenticated
+
+		The file size of each slot is always 65535 bytes (the maximum
+		size of a certificate chain per SPDM 1.0.0 table 18), even if
+		the certificate chain in the slot is actually smaller.
+
+		Unprovisioned slots are represented as empty files.
+
+		Unsupported slots (introduced by SPDM 1.3 margin no 366) are
+		not visible.  If the device only supports SPDM version 1.2 or
+		earlier, all 8 slots are assumed to be supported and therefore
+		visible.
+
+		The kernel learns which slots are supported when authenticating
+		the device for the first time.  Hence, no slots are visible
+		until at least one authentication attempt has been performed.
+
+		SPDM doesn't support on-demand retrieval of certificate chains,
+		so the kernel caches them when (re-)authenticating the device.
+		SPDM allows provisioning slots behind the kernel's back by
+		sending a SET_CERTIFICATE request through a different transport
+		(e.g. via MCTP from a Baseboard Management Controller).
+		SPDM does not specify how to notify the kernel of such events,
+		so unless reauthentication is manually initiated to update the
+		kernel's cache, the "slot[0-7]" files may contain stale data.

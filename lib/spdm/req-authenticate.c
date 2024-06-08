@@ -14,6 +14,7 @@
 #include "spdm.h"
 
 #include <linux/dev_printk.h>
+#include <linux/device.h>
 #include <linux/key.h>
 #include <linux/random.h>
 #include <linux/unaligned.h>
@@ -288,9 +289,9 @@ static int spdm_get_digests(struct spdm_state *spdm_state)
 	struct spdm_get_digests_req *req = spdm_state->transcript_end;
 	struct spdm_get_digests_rsp *rsp;
 	unsigned long deprovisioned_slots;
+	u8 slot, supported_slots;
 	int rc, length;
 	size_t rsp_sz;
-	u8 slot;
 
 	*req = (struct spdm_get_digests_req) {
 		.code = SPDM_GET_DIGESTS,
@@ -336,6 +337,33 @@ static int spdm_get_digests(struct spdm_state *spdm_state)
 	if (!spdm_state->provisioned_slots) {
 		dev_err(spdm_state->dev, "No certificates provisioned\n");
 		return -EPROTO;
+	}
+
+	/*
+	 * If a bit is set in ProvisionedSlotMask, the corresponding bit in
+	 * SupportedSlotMask shall also be set (SPDM 1.3.0 table 35).
+	 */
+	if (spdm_state->version >= 0x13 && rsp->param2 & ~rsp->param1) {
+		dev_err(spdm_state->dev, "Malformed digests response\n");
+		return -EPROTO;
+	}
+
+	if (spdm_state->version >= 0x13)
+		supported_slots = rsp->param1;
+	else
+		supported_slots = GENMASK(7, 0);
+
+	if (spdm_state->supported_slots != supported_slots) {
+		spdm_state->supported_slots = supported_slots;
+
+		if (device_is_registered(spdm_state->dev)) {
+			rc = sysfs_update_group(&spdm_state->dev->kobj,
+						&spdm_certificates_group);
+			if (rc)
+				dev_err(spdm_state->dev,
+					"Cannot update certificates in sysfs: "
+					"%d\n", rc);
+		}
 	}
 
 	return 0;
