@@ -486,6 +486,9 @@ int sysfs_add_link_to_group(struct kobject *kobj, const char *group_name,
 			    struct kobject *target, const char *link_name);
 void sysfs_remove_link_from_group(struct kobject *kobj, const char *group_name,
 				  const char *link_name);
+int sysfs_add_link_to_sibling_group(struct kobject *kobj,
+				    const char *link_grp, const char *link,
+				    const char *target_grp, const char *target);
 int compat_only_sysfs_link_entry_to_kobj(struct kobject *kobj,
 					 struct kobject *target_kobj,
 					 const char *target_name,
@@ -721,6 +724,13 @@ static inline int sysfs_add_link_to_group(struct kobject *kobj,
 static inline void sysfs_remove_link_from_group(struct kobject *kobj,
 		const char *group_name, const char *link_name)
 {
+}
+
+static inline int sysfs_add_link_to_sibling_group(struct kobject *kobj,
+		const char *link_grp, const char *link,
+		const char *target_grp, const char *target)
+{
+	return 0;
 }
 
 static inline int compat_only_sysfs_link_entry_to_kobj(struct kobject *kobj,

@@ -407,6 +407,8 @@ struct kernfs_node *kernfs_walk_and_get_ns(struct kernfs_node *parent,
 void kernfs_get(struct kernfs_node *kn);
 void kernfs_put(struct kernfs_node *kn);
 
+DEFINE_FREE(kernfs_put, struct kernfs_node *, if (_T) kernfs_put(_T))
+
 struct kernfs_node *kernfs_node_from_dentry(struct dentry *dentry);
 struct kernfs_root *kernfs_root_from_sb(struct super_block *sb);
 struct inode *kernfs_get_inode(struct super_block *sb, struct kernfs_node *kn);
