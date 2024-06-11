@@ -449,6 +449,39 @@ void sysfs_remove_link_from_group(struct kobject *kobj, const char *group_name,
 EXPORT_SYMBOL_GPL(sysfs_remove_link_from_group);
 
 /**
+ * sysfs_add_link_to_sibling_group - add a symlink to a sibling attribute group.
+ * @kobj:	The kobject containing the groups.
+ * @link_grp:	The name of the group in which to create the symlink.
+ * @link:	The name of the symlink to create.
+ * @target_grp:	The name of the target group.
+ * @target:	The name of the target attribute.
+ *
+ * Returns 0 on success or error code on failure.
+ */
+int sysfs_add_link_to_sibling_group(struct kobject *kobj,
+				    const char *link_grp, const char *link,
+				    const char *target_grp, const char *target)
+{
+	struct kernfs_node *target_grp_kn __free(kernfs_put),
+			   *target_kn __free(kernfs_put) = NULL,
+			   *link_grp_kn __free(kernfs_put) = NULL;
+
+	target_grp_kn = kernfs_find_and_get(kobj->sd, target_grp);
+	if (!target_grp_kn)
+		return -ENOENT;
+
+	target_kn = kernfs_find_and_get(target_grp_kn, target);
+	if (!target_kn)
+		return -ENOENT;
+
+	link_grp_kn = kernfs_find_and_get(kobj->sd, link_grp);
+	if (!link_grp_kn)
+		return -ENOENT;
+
+	return PTR_ERR_OR_ZERO(kernfs_create_link(link_grp_kn, link, target_kn));
+}
+
+/**
  * compat_only_sysfs_link_entry_to_kobj - add a symlink to a kobject pointing
  * to a group or an attribute
  * @kobj:		The kobject containing the group.
