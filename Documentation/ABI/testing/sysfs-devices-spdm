@@ -161,6 +161,21 @@ Description:
 		dissector needs to be fed the concatenation of "transcript"
 		and "signature".
 
+		Because the number prefixed to the filenames is 32 bit, it
+		wraps around to 0 after 4,294,967,295 signatures.  The kernel
+		avoids filename collisions on wraparound by purging old files,
+		subject to the limit set by "sysctl spdm.max_signatures_size"
+		(which defaults to 16 MiB).  It is advisable to regularly save
+		backups on non-volatile storage to retain access to signatures
+		that have been purged (or across reboots)::
+
+		 # tar -u -h -f /path/to/signatures.tar signatures/
+
+		The ctime of each file is the reception time of the signature.
+		However if the signature was received before the device became
+		registered in sysfs, the ctime is the registration time of the
+		device.
+
 
 What:		/sys/devices/.../signatures/[0-9]*_type
 Date:		June 2024

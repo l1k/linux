@@ -20,6 +20,9 @@
 #include <crypto/hash.h>
 #include <crypto/public_key.h>
 
+LIST_HEAD(spdm_state_list); /* list of all struct spdm_state */
+DEFINE_MUTEX(spdm_state_mutex); /* protects spdm_state_list */
+
 static int spdm_err(struct device *dev, struct spdm_error_rsp *rsp)
 {
 	switch (rsp->error_code) {
@@ -403,6 +406,10 @@ struct spdm_state *spdm_create(struct device *dev, spdm_transport *transport,
 	mutex_init(&spdm_state->lock);
 	INIT_LIST_HEAD(&spdm_state->log);
 
+	mutex_lock(&spdm_state_mutex);
+	list_add_tail(&spdm_state->list, &spdm_state_list);
+	mutex_unlock(&spdm_state_mutex);
+
 	return spdm_state;
 }
 EXPORT_SYMBOL_GPL(spdm_create);
@@ -415,6 +422,10 @@ EXPORT_SYMBOL_GPL(spdm_create);
 void spdm_destroy(struct spdm_state *spdm_state)
 {
 	u8 slot;
+
+	mutex_lock(&spdm_state_mutex);
+	list_del(&spdm_state->list);
+	mutex_unlock(&spdm_state_mutex);
 
 	for_each_set_bit(slot, &spdm_state->provisioned_slots, SPDM_SLOTS)
 		kvfree(spdm_state->slot[slot]);

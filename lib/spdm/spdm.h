@@ -420,6 +420,8 @@ struct spdm_error_rsp {
  * @dev: Responder device.  Used for error reporting and passed to @transport.
  *	Attributes in sysfs appear below this device's directory.
  * @lock: Serializes multiple concurrent spdm_authenticate() calls.
+ * @list: List node.  Added to spdm_state_list.  Used to iterate over all
+ *	SPDM-capable devices when a global sysctl parameter is changed.
  * @authenticated: Whether device was authenticated successfully.
  * @dev: Responder device.  Used for error reporting and passed to @transport.
  * @transport: Transport function to perform one message exchange.
@@ -468,12 +470,16 @@ struct spdm_error_rsp {
  * @transcript_max: Allocation size of @transcript.  Multiple of PAGE_SIZE.
  * @log: Linked list of past authentication events.  Each list entry is of type
  *	struct spdm_log_entry and is exposed as several files in sysfs.
+ * @log_sz: Memory occupied by @log (in bytes) to enforce the limit set by
+ *	spdm_max_log_sz.  Includes, for every entry, the struct spdm_log_entry
+ *	itself and the transcript with trailing signature.
  * @log_counter: Number of generated log entries so far.  Will be prefixed to
  *	the sysfs files of the next generated log entry.
  */
 struct spdm_state {
 	struct device *dev;
 	struct mutex lock;
+	struct list_head list;
 	unsigned int authenticated:1;
 
 	/* Transport */
@@ -513,8 +519,12 @@ struct spdm_state {
 
 	/* Signatures Log */
 	struct list_head log;
+	size_t log_sz;
 	u32 log_counter;
 };
+
+extern struct list_head spdm_state_list;
+extern struct mutex spdm_state_mutex;
 
 ssize_t spdm_exchange(struct spdm_state *spdm_state,
 		      void *req, size_t req_sz, void *rsp, size_t rsp_sz);
