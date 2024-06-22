@@ -615,7 +615,7 @@ static size_t spdm_challenge_rsp_sz(struct spdm_state *spdm_state,
 	return  size  + spdm_state->sig_len;	/* Signature */
 }
 
-static int spdm_challenge(struct spdm_state *spdm_state, u8 slot)
+static int spdm_challenge(struct spdm_state *spdm_state, u8 slot, bool verify)
 {
 	size_t req_sz, rsp_sz, rsp_sz_max, req_nonce_off, rsp_nonce_off;
 	struct spdm_challenge_rsp *rsp __free(kfree);
@@ -661,14 +661,19 @@ static int spdm_challenge(struct spdm_state *spdm_state, u8 slot)
 	if (rc)
 		return rc;
 
-	/* Verify signature at end of transcript against leaf key */
-	rc = spdm_verify_signature(spdm_state, spdm_context);
-	if (rc)
-		dev_err(spdm_state->dev,
-			"Cannot verify challenge_auth signature: %d\n", rc);
-	else
-		dev_info(spdm_state->dev,
-			 "Authenticated with certificate slot %u\n", slot);
+	rc = -EKEYREJECTED;
+	if (verify) {
+		/* Verify signature at end of transcript against leaf key */
+		rc = spdm_verify_signature(spdm_state, spdm_context);
+		if (rc)
+			dev_err(spdm_state->dev,
+				"Cannot verify challenge_auth signature: %d\n",
+				rc);
+		else
+			dev_info(spdm_state->dev,
+				 "Authenticated with certificate slot %u\n",
+				 slot);
+	}
 
 	spdm_create_log_entry(spdm_state, spdm_context, slot,
 			      req_nonce_off, rsp_nonce_off);
@@ -692,6 +697,7 @@ static int spdm_challenge(struct spdm_state *spdm_state, u8 slot)
  */
 int spdm_authenticate(struct spdm_state *spdm_state)
 {
+	bool verify = false;
 	u8 slot;
 	int rc;
 
@@ -726,13 +732,21 @@ int spdm_authenticate(struct spdm_state *spdm_state)
 
 	for_each_set_bit(slot, &spdm_state->provisioned_slots, SPDM_SLOTS) {
 		rc = spdm_validate_cert_chain(spdm_state, slot);
-		if (rc == 0)
+		if (rc == 0) {
+			verify = true;
 			break;
+		}
 	}
-	if (rc)
-		goto unlock;
 
-	rc = spdm_challenge(spdm_state, slot);
+	/*
+	 * If no cert chain validates, perform challenge-response with
+	 * arbitrary slot to be able to expose a signature in sysfs
+	 * about which user space can make up its own mind.
+	 */
+	if (rc)
+		slot = __ffs(spdm_state->provisioned_slots);
+
+	rc = spdm_challenge(spdm_state, slot, verify);
 
 unlock:
 	if (rc)
