@@ -161,6 +161,11 @@ Description:
 		dissector needs to be fed the concatenation of "transcript"
 		and "signature".
 
+		Signatures are added to the log even if the kernel was unable
+		to verify them (e.g. due to a missing trusted root certificate
+		or forged signature).  Thereby, remote attestation services
+		may make up their own mind on the signature's validity.
+
 		Because the number prefixed to the filenames is 32 bit, it
 		wraps around to 0 after 4,294,967,295 signatures.  The kernel
 		avoids filename collisions on wraparound by purging old files,
