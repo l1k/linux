@@ -76,6 +76,7 @@ kernel/		global kernel info / tuning
 net/		networking stuff, for documentation look in:
 		<Documentation/networking/>
 proc/		<empty>
+spdm/		Security Protocol and Data Model (SPDM)
 sunrpc/		SUN Remote Procedure Call (NFS)
 vm/		memory management tuning
 		buffer and cache management
@@ -93,6 +94,7 @@ really like to hear about it :-)
    fs
    kernel
    net
+   spdm
    sunrpc
    user
    vm

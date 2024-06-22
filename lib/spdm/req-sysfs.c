@@ -186,6 +186,8 @@ const struct attribute_group spdm_signatures_group = {
 	.bin_attrs = spdm_signatures_bin_attrs,
 };
 
+static unsigned int spdm_max_log_sz = SZ_16M; /* per device */
+
 /**
  * struct spdm_log_entry - log entry representing one received SPDM signature
  *
@@ -333,11 +335,29 @@ static ssize_t spdm_read_combined_prefix(struct file *file,
 	return count;
 }
 
-static void spdm_destroy_log_entry(struct spdm_log_entry *log)
+static void spdm_destroy_log_entry(struct spdm_state *spdm_state,
+				   struct spdm_log_entry *log)
 {
+	spdm_state->log_sz -= log->transcript.size + log->sig.size +
+			      sizeof(*log);
+
 	list_del(&log->list);
 	kvfree(log->transcript.private);
 	kfree(log);
+}
+
+static void spdm_shrink_log(struct spdm_state *spdm_state)
+{
+	while (spdm_state->log_sz > spdm_max_log_sz &&
+	       !list_is_singular(&spdm_state->log)) {
+		struct spdm_log_entry *log =
+			list_first_entry(&spdm_state->log, typeof(*log), list);
+
+		if (device_is_registered(spdm_state->dev))
+			spdm_unpublish_log_entry(&spdm_state->dev->kobj, log);
+
+		spdm_destroy_log_entry(spdm_state, log);
+	}
 }
 
 /**
@@ -445,6 +465,11 @@ void spdm_create_log_entry(struct spdm_state *spdm_state,
 
 	list_add_tail(&log->list, &spdm_state->log);
 	spdm_state->log_counter++;
+	spdm_state->log_sz += log->transcript.size + log->sig.size +
+			      sizeof(*log);
+
+	/* Purge oldest log entries if max log size is exceeded */
+	spdm_shrink_log(spdm_state);
 
 	/* Steal transcript pointer ahead of spdm_free_transcript() */
 	spdm_state->transcript = NULL;
@@ -505,5 +530,55 @@ void spdm_destroy_log(struct spdm_state *spdm_state)
 	struct spdm_log_entry *log, *tmp;
 
 	list_for_each_entry_safe(log, tmp, &spdm_state->log, list)
-		spdm_destroy_log_entry(log);
+		spdm_destroy_log_entry(spdm_state, log);
 }
+
+#ifdef CONFIG_SYSCTL
+static int proc_max_log_sz(const struct ctl_table *table, int write,
+			   void *buffer, size_t *lenp, loff_t *ppos)
+{
+	unsigned int old_max_log_sz = spdm_max_log_sz;
+	struct spdm_state *spdm_state;
+	int rc;
+
+	rc = proc_douintvec_minmax(table, write, buffer, lenp, ppos);
+	if (rc)
+		return rc;
+
+	/* Purge oldest log entries if max log size has been reduced */
+	if (write && spdm_max_log_sz < old_max_log_sz) {
+		mutex_lock(&spdm_state_mutex);
+		list_for_each_entry(spdm_state, &spdm_state_list, list) {
+			mutex_lock(&spdm_state->lock);
+			spdm_shrink_log(spdm_state);
+			mutex_unlock(&spdm_state->lock);
+		}
+		mutex_unlock(&spdm_state_mutex);
+	}
+
+	return 0;
+}
+
+static struct ctl_table spdm_ctl_table[] = {
+	{
+		.procname	= "max_signatures_size",
+		.data		= &spdm_max_log_sz,
+		.maxlen		= sizeof(spdm_max_log_sz),
+		.mode		= 0644,
+		.proc_handler	= proc_max_log_sz,
+		.extra1		= SYSCTL_ZERO,
+				  /*
+				   * 2 GiB limit avoids filename collision on
+				   * wraparound of unsigned 32-bit log_counter
+				   */
+		.extra2		= SYSCTL_INT_MAX,
+	},
+};
+
+static int __init spdm_init(void)
+{
+	register_sysctl_init("spdm", spdm_ctl_table);
+	return 0;
+}
+fs_initcall(spdm_init);
+#endif /* CONFIG_SYSCTL */
