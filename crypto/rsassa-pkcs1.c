@@ -118,6 +118,17 @@ static const struct hash_prefix *rsassa_pkcs1_find_hash_prefix(const char *name)
 	return NULL;
 }
 
+static unsigned int rsassa_pkcs1_hash_len(const struct hash_prefix *p)
+{
+	/*
+	 * The final byte of the Full Hash Prefix encodes the hash length.
+	 *
+	 * This needs to be revisited should hash algorithms with more than
+	 * 1016 bits (127 bytes * 8) ever be added.
+	 */
+	return p->data[p->size - 1];
+}
+
 struct rsassa_pkcs1_ctx {
 	struct crypto_akcipher *child;
 	unsigned int key_size;
@@ -151,6 +162,9 @@ static int rsassa_pkcs1_sign(struct crypto_sig *tfm,
 
 	if (dlen < ctx->key_size)
 		return -EOVERFLOW;
+
+	if (slen != rsassa_pkcs1_hash_len(hash_prefix))
+		return -EINVAL;
 
 	if (slen + hash_prefix->size > ctx->key_size - 11)
 		return -EOVERFLOW;
@@ -217,7 +231,7 @@ static int rsassa_pkcs1_verify(struct crypto_sig *tfm,
 	/* RFC 8017 sec 8.2.2 step 1 - length checking */
 	if (!ctx->key_size ||
 	    slen != ctx->key_size ||
-	    !dlen)
+	    dlen != rsassa_pkcs1_hash_len(hash_prefix))
 		return -EINVAL;
 
 	/* RFC 8017 sec 8.2.2 step 2 - RSA verification */
