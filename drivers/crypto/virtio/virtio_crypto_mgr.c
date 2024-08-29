@@ -248,6 +248,12 @@ int virtcrypto_dev_start(struct virtio_crypto *vcrypto)
 		return -EFAULT;
 	}
 
+	if (virtio_crypto_sig_algs_register(vcrypto)) {
+		pr_err("virtio_crypto: Failed to register crypto sig algs\n");
+		virtio_crypto_sig_algs_unregister(vcrypto);
+		return -EFAULT;
+	}
+
 	return 0;
 }
 
@@ -265,6 +271,7 @@ void virtcrypto_dev_stop(struct virtio_crypto *vcrypto)
 {
 	virtio_crypto_skcipher_algs_unregister(vcrypto);
 	virtio_crypto_akcipher_algs_unregister(vcrypto);
+	virtio_crypto_sig_algs_unregister(vcrypto);
 }
 
 /*

@@ -19,19 +19,7 @@
 #include <linux/string.h>
 #include <uapi/linux/virtio_crypto.h>
 #include "virtio_crypto_common.h"
-
-struct virtio_crypto_rsa_ctx {
-	unsigned int keysize;
-};
-
-struct virtio_crypto_akcipher_ctx {
-	struct virtio_crypto *vcrypto;
-	bool session_valid;
-	__u64 session_id;
-	union {
-		struct virtio_crypto_rsa_ctx rsa_ctx;
-	};
-};
+#include "virtio_crypto_akcipher.h"
 
 struct virtio_crypto_akcipher_request {
 	struct virtio_crypto_request base;
@@ -351,24 +339,10 @@ static int virtio_crypto_rsa_decrypt(struct akcipher_request *req)
 	return virtio_crypto_rsa_req(req, VIRTIO_CRYPTO_AKCIPHER_DECRYPT);
 }
 
-static int virtio_crypto_rsa_sign(struct akcipher_request *req)
+int virtio_crypto_rsa_set_key(struct virtio_crypto_akcipher_ctx *ctx,
+			      const void *key, unsigned int keylen,
+			      bool private, int padding_algo, int hash_algo)
 {
-	return virtio_crypto_rsa_req(req, VIRTIO_CRYPTO_AKCIPHER_SIGN);
-}
-
-static int virtio_crypto_rsa_verify(struct akcipher_request *req)
-{
-	return virtio_crypto_rsa_req(req, VIRTIO_CRYPTO_AKCIPHER_VERIFY);
-}
-
-static int virtio_crypto_rsa_set_key(struct crypto_akcipher *tfm,
-				     const void *key,
-				     unsigned int keylen,
-				     bool private,
-				     int padding_algo,
-				     int hash_algo)
-{
-	struct virtio_crypto_akcipher_ctx *ctx = akcipher_tfm_ctx(tfm);
 	struct virtio_crypto_rsa_ctx *rsa_ctx = &ctx->rsa_ctx;
 	struct virtio_crypto *vcrypto;
 	struct virtio_crypto_ctrl_header header;
@@ -429,7 +403,9 @@ static int virtio_crypto_rsa_raw_set_priv_key(struct crypto_akcipher *tfm,
 					      const void *key,
 					      unsigned int keylen)
 {
-	return virtio_crypto_rsa_set_key(tfm, key, keylen, 1,
+	struct virtio_crypto_akcipher_ctx *ctx = akcipher_tfm_ctx(tfm);
+
+	return virtio_crypto_rsa_set_key(ctx, key, keylen, 1,
 					 VIRTIO_CRYPTO_RSA_RAW_PADDING,
 					 VIRTIO_CRYPTO_RSA_NO_HASH);
 }
@@ -439,7 +415,9 @@ static int virtio_crypto_p1pad_rsa_sha1_set_priv_key(struct crypto_akcipher *tfm
 						     const void *key,
 						     unsigned int keylen)
 {
-	return virtio_crypto_rsa_set_key(tfm, key, keylen, 1,
+	struct virtio_crypto_akcipher_ctx *ctx = akcipher_tfm_ctx(tfm);
+
+	return virtio_crypto_rsa_set_key(ctx, key, keylen, 1,
 					 VIRTIO_CRYPTO_RSA_PKCS1_PADDING,
 					 VIRTIO_CRYPTO_RSA_SHA1);
 }
@@ -448,7 +426,9 @@ static int virtio_crypto_rsa_raw_set_pub_key(struct crypto_akcipher *tfm,
 					     const void *key,
 					     unsigned int keylen)
 {
-	return virtio_crypto_rsa_set_key(tfm, key, keylen, 0,
+	struct virtio_crypto_akcipher_ctx *ctx = akcipher_tfm_ctx(tfm);
+
+	return virtio_crypto_rsa_set_key(ctx, key, keylen, 0,
 					 VIRTIO_CRYPTO_RSA_RAW_PADDING,
 					 VIRTIO_CRYPTO_RSA_NO_HASH);
 }
@@ -457,7 +437,9 @@ static int virtio_crypto_p1pad_rsa_sha1_set_pub_key(struct crypto_akcipher *tfm,
 						    const void *key,
 						    unsigned int keylen)
 {
-	return virtio_crypto_rsa_set_key(tfm, key, keylen, 0,
+	struct virtio_crypto_akcipher_ctx *ctx = akcipher_tfm_ctx(tfm);
+
+	return virtio_crypto_rsa_set_key(ctx, key, keylen, 0,
 					 VIRTIO_CRYPTO_RSA_PKCS1_PADDING,
 					 VIRTIO_CRYPTO_RSA_SHA1);
 }
@@ -516,16 +498,19 @@ static struct virtio_crypto_akcipher_algo virtio_crypto_akcipher_algs[] = {
 		.algo.base = {
 			.encrypt = virtio_crypto_rsa_encrypt,
 			.decrypt = virtio_crypto_rsa_decrypt,
-			.sign = virtio_crypto_rsa_sign,
-			.verify = virtio_crypto_rsa_verify,
+			/*
+			 * Must specify an arbitrary hash algorithm upon
+			 * set_{pub,priv}_key (even though it's not used
+			 * by encrypt/decrypt) because qemu checks for it.
+			 */
 			.set_pub_key = virtio_crypto_p1pad_rsa_sha1_set_pub_key,
 			.set_priv_key = virtio_crypto_p1pad_rsa_sha1_set_priv_key,
 			.max_size = virtio_crypto_rsa_max_size,
 			.init = virtio_crypto_rsa_init_tfm,
 			.exit = virtio_crypto_rsa_exit_tfm,
 			.base = {
-				.cra_name = "pkcs1pad(rsa,sha1)",
-				.cra_driver_name = "virtio-pkcs1-rsa-with-sha1",
+				.cra_name = "pkcs1pad(rsa)",
+				.cra_driver_name = "virtio-pkcs1-rsa",
 				.cra_priority = 150,
 				.cra_module = THIS_MODULE,
 				.cra_ctxsize = sizeof(struct virtio_crypto_akcipher_ctx),

@@ -7,6 +7,7 @@ config CRYPTO_DEV_VIRTIO
 	select CRYPTO_SKCIPHER
 	select CRYPTO_ENGINE
 	select CRYPTO_RSA
+	select CRYPTO_SIG
 	select MPILIB
 	help
 	  This driver provides support for virtio crypto device. If you
