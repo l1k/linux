@@ -21,7 +21,7 @@ static int ecdsa_p1363_verify(struct crypto_sig *tfm,
 			      const void *digest, unsigned int dlen)
 {
 	struct ecdsa_p1363_ctx *ctx = crypto_sig_ctx(tfm);
-	unsigned int keylen = crypto_sig_keysize(ctx->child);
+	unsigned int keylen = DIV_ROUND_UP(crypto_sig_keysize(ctx->child), 8);
 	unsigned int ndigits = DIV_ROUND_UP(keylen, sizeof(u64));
 	struct ecdsa_raw_sig sig;
 
@@ -45,7 +45,7 @@ static unsigned int ecdsa_p1363_max_size(struct crypto_sig *tfm)
 {
 	struct ecdsa_p1363_ctx *ctx = crypto_sig_ctx(tfm);
 
-	return 2 * crypto_sig_keysize(ctx->child);
+	return 2 * DIV_ROUND_UP(crypto_sig_keysize(ctx->child), 8);
 }
 
 static unsigned int ecdsa_p1363_digest_size(struct crypto_sig *tfm)

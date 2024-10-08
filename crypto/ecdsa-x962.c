@@ -82,7 +82,7 @@ static int ecdsa_x962_verify(struct crypto_sig *tfm,
 	int err;
 
 	sig_ctx.ndigits = DIV_ROUND_UP(crypto_sig_keysize(ctx->child),
-				       sizeof(u64));
+				       sizeof(u64) * 8);
 
 	err = asn1_ber_decoder(&ecdsasignature_decoder, &sig_ctx, src, slen);
 	if (err < 0)
@@ -103,7 +103,7 @@ static unsigned int ecdsa_x962_max_size(struct crypto_sig *tfm)
 {
 	struct ecdsa_x962_ctx *ctx = crypto_sig_ctx(tfm);
 	struct sig_alg *alg = crypto_sig_alg(ctx->child);
-	int slen = crypto_sig_keysize(ctx->child);
+	int slen = DIV_ROUND_UP(crypto_sig_keysize(ctx->child), 8);
 
 	/*
 	 * Verify takes ECDSA-Sig-Value (described in RFC 5480) as input,
