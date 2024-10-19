@@ -165,9 +165,9 @@ static int software_key_query(const struct kernel_pkey_params *params,
 {
 	struct crypto_akcipher *tfm;
 	struct public_key *pkey = params->key->payload.data[asym_crypto];
+	u8 *ptr, *key __free(kfree_sensitive) = NULL;
 	char alg_name[CRYPTO_MAX_ALG_NAME];
 	struct crypto_sig *sig;
-	u8 *key, *ptr;
 	int ret, len;
 	bool issig;
 
@@ -192,10 +192,8 @@ static int software_key_query(const struct kernel_pkey_params *params,
 
 	if (issig) {
 		sig = crypto_alloc_sig(alg_name, 0, 0);
-		if (IS_ERR(sig)) {
-			ret = PTR_ERR(sig);
-			goto error_free_key;
-		}
+		if (IS_ERR(sig))
+			return PTR_ERR(sig);
 
 		if (pkey->key_is_private)
 			ret = crypto_sig_set_privkey(sig, key, pkey->keylen);
@@ -223,10 +221,8 @@ static int software_key_query(const struct kernel_pkey_params *params,
 		}
 	} else {
 		tfm = crypto_alloc_akcipher(alg_name, 0, 0);
-		if (IS_ERR(tfm)) {
-			ret = PTR_ERR(tfm);
-			goto error_free_key;
-		}
+		if (IS_ERR(tfm))
+			return PTR_ERR(tfm);
 
 		if (pkey->key_is_private)
 			ret = crypto_akcipher_set_priv_key(tfm, key, pkey->keylen);
@@ -254,9 +250,6 @@ error_free_tfm:
 		crypto_free_sig(sig);
 	else
 		crypto_free_akcipher(tfm);
-error_free_key:
-	kfree_sensitive(key);
-	pr_devel("<==%s() = %d\n", __func__, ret);
 	return ret;
 }
 
