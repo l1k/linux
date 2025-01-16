@@ -5954,7 +5954,7 @@ static bool nfs4_server_supports_acls(const struct nfs_server *server,
  * it's OK to put sizeof(void) * (XATTR_SIZE_MAX/PAGE_SIZE) bytes on
  * the stack.
  */
-#define NFS4ACL_MAXPAGES DIV_ROUND_UP(XATTR_SIZE_MAX, PAGE_SIZE)
+#define NFS4ACL_MAXPAGES __KERNEL_DIV_ROUND_UP(XATTR_SIZE_MAX, PAGE_SIZE)
 
 int nfs4_buf_to_pages_noslab(const void *buf, size_t buflen,
 		struct page **pages)

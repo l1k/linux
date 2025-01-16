@@ -7,7 +7,8 @@
 #include "compress.h"
 #include <linux/lz4.h>
 
-#define LZ4_MAX_DISTANCE_PAGES	(DIV_ROUND_UP(LZ4_DISTANCE_MAX, PAGE_SIZE) + 1)
+#define LZ4_MAX_DISTANCE_PAGES \
+	(__KERNEL_DIV_ROUND_UP(LZ4_DISTANCE_MAX, PAGE_SIZE) + 1)
 
 struct z_erofs_lz4_decompress_ctx {
 	struct z_erofs_decompress_req *rq;
@@ -60,8 +61,7 @@ static int z_erofs_lz4_prepare_dstpages(struct z_erofs_lz4_decompress_ctx *ctx,
 {
 	struct z_erofs_decompress_req *rq = ctx->rq;
 	struct page *availables[LZ4_MAX_DISTANCE_PAGES] = { NULL };
-	unsigned long bounced[DIV_ROUND_UP(LZ4_MAX_DISTANCE_PAGES,
-					   BITS_PER_LONG)] = { 0 };
+	unsigned long bounced[BITS_TO_LONGS(LZ4_MAX_DISTANCE_PAGES)] = { 0 };
 	unsigned int lz4_max_distance_pages =
 				EROFS_SB(rq->sb)->lz4.max_distance_pages;
 	void *kaddr = NULL;

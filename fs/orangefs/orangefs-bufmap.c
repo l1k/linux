@@ -158,7 +158,7 @@ static struct orangefs_bufmap {
 	unsigned long *buffer_index_array;
 
 	/* array to track usage of buffer descriptors for readdir */
-#define N DIV_ROUND_UP(ORANGEFS_READDIR_DEFAULT_DESC_COUNT, BITS_PER_LONG)
+#define N BITS_TO_LONGS(ORANGEFS_READDIR_DEFAULT_DESC_COUNT)
 	unsigned long readdir_index_array[N];
 #undef N
 } *__orangefs_bufmap;

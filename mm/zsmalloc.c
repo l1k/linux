@@ -128,8 +128,9 @@
  *  (reason above)
  */
 #define ZS_SIZE_CLASS_DELTA	(PAGE_SIZE >> CLASS_BITS)
-#define ZS_SIZE_CLASSES	(DIV_ROUND_UP(ZS_MAX_ALLOC_SIZE - ZS_MIN_ALLOC_SIZE, \
-				      ZS_SIZE_CLASS_DELTA) + 1)
+#define ZS_SIZE_CLASSES	(__KERNEL_DIV_ROUND_UP(ZS_MAX_ALLOC_SIZE -	\
+					       ZS_MIN_ALLOC_SIZE,	\
+					       ZS_SIZE_CLASS_DELTA) + 1)
 
 /*
  * Pages are distinguished by the ratio of used memory (that is the ratio

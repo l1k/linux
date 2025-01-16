@@ -529,8 +529,8 @@ static int swap_writer_finish(struct swap_map_handle *handle,
 #define UNC_SIZE	(UNC_PAGES * PAGE_SIZE)
 
 /* Number of pages we need for compressed data (worst case). */
-#define CMP_PAGES	DIV_ROUND_UP(bytes_worst_compress(UNC_SIZE) + \
-				CMP_HEADER, PAGE_SIZE)
+#define CMP_PAGES	__KERNEL_DIV_ROUND_UP(bytes_worst_compress(UNC_SIZE) + \
+					      CMP_HEADER, PAGE_SIZE)
 #define CMP_SIZE	(CMP_PAGES * PAGE_SIZE)
 
 /* Maximum number of threads for compression/decompression. */

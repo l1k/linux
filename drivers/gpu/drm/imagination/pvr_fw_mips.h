@@ -13,7 +13,7 @@
 /* Forward declaration from pvr_gem.h. */
 struct pvr_gem_object;
 
-#define PVR_MIPS_PT_PAGE_COUNT DIV_ROUND_UP(ROGUE_MIPSFW_MAX_NUM_PAGETABLE_PAGES * ROGUE_MIPSFW_PAGE_SIZE_4K, PAGE_SIZE)
+#define PVR_MIPS_PT_PAGE_COUNT __KERNEL_DIV_ROUND_UP(ROGUE_MIPSFW_MAX_NUM_PAGETABLE_PAGES * ROGUE_MIPSFW_PAGE_SIZE_4K, PAGE_SIZE)
 
 /**
  * struct pvr_fw_mips_data - MIPS-specific data

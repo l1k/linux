@@ -238,9 +238,8 @@
  * (rounded up, including intermission)
  */
 #define can_frame_bytes(is_fd, is_eff, bitstuffing, data_len)	\
-	DIV_ROUND_UP(can_frame_bits(is_fd, is_eff, bitstuffing,	\
-				    true, data_len),		\
-		     BITS_PER_BYTE)
+	BITS_TO_BYTES(can_frame_bits(is_fd, is_eff, bitstuffing,\
+				     true, data_len))
 
 /*
  * Maximum size of a Classical CAN frame

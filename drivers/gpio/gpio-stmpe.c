@@ -381,7 +381,7 @@ static irqreturn_t stmpe_gpio_irq(int irq, void *dev)
 	struct stmpe *stmpe = stmpe_gpio->stmpe;
 	u8 statmsbreg;
 	int num_banks = DIV_ROUND_UP(stmpe->num_gpios, 8);
-	u8 status[DIV_ROUND_UP(MAX_GPIOS, 8)];
+	u8 status[__KERNEL_DIV_ROUND_UP(MAX_GPIOS, 8)];
 	int ret;
 	int i;
 

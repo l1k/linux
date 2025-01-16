@@ -84,13 +84,14 @@ struct descriptor {
 #define CONTEXT_MATCH(regs)	((regs) + 16)
 
 #define AR_BUFFER_SIZE	(32*1024)
-#define AR_BUFFERS_MIN	DIV_ROUND_UP(AR_BUFFER_SIZE, PAGE_SIZE)
+#define AR_BUFFERS_MIN	__KERNEL_DIV_ROUND_UP(AR_BUFFER_SIZE, PAGE_SIZE)
 /* we need at least two pages for proper list management */
 #define AR_BUFFERS	(AR_BUFFERS_MIN >= 2 ? AR_BUFFERS_MIN : 2)
 
 #define MAX_ASYNC_PAYLOAD	4096
 #define MAX_AR_PACKET_SIZE	(16 + MAX_ASYNC_PAYLOAD + 4)
-#define AR_WRAPAROUND_PAGES	DIV_ROUND_UP(MAX_AR_PACKET_SIZE, PAGE_SIZE)
+#define AR_WRAPAROUND_PAGES	__KERNEL_DIV_ROUND_UP(MAX_AR_PACKET_SIZE, \
+						      PAGE_SIZE)
 
 struct ar_context {
 	struct fw_ohci *ohci;

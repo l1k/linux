@@ -41,8 +41,8 @@
 
 #define DW100_DEF_W		640u
 #define DW100_DEF_H		480u
-#define DW100_DEF_LUT_W		(DIV_ROUND_UP(DW100_DEF_W, DW100_BLOCK_SIZE) + 1)
-#define DW100_DEF_LUT_H		(DIV_ROUND_UP(DW100_DEF_H, DW100_BLOCK_SIZE) + 1)
+#define DW100_DEF_LUT_W		(__KERNEL_DIV_ROUND_UP(DW100_DEF_W, DW100_BLOCK_SIZE) + 1)
+#define DW100_DEF_LUT_H		(__KERNEL_DIV_ROUND_UP(DW100_DEF_H, DW100_BLOCK_SIZE) + 1)
 
 /*
  * 16 controls have been reserved for this driver for future extension, but

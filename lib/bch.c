@@ -92,7 +92,7 @@
 #define BCH_ECC_WORDS(_p)      DIV_ROUND_UP(GF_M(_p)*GF_T(_p), 32)
 #define BCH_ECC_BYTES(_p)      DIV_ROUND_UP(GF_M(_p)*GF_T(_p), 8)
 
-#define BCH_ECC_MAX_WORDS      DIV_ROUND_UP(BCH_MAX_M * BCH_MAX_T, 32)
+#define BCH_ECC_MAX_WORDS      __KERNEL_DIV_ROUND_UP(BCH_MAX_M * BCH_MAX_T, 32)
 
 #ifndef dbg
 #define dbg(_fmt, args...)     do {} while (0)

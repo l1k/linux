@@ -23,7 +23,7 @@
 #define MCS_NBITS ((AVG_PKT_SIZE * AVG_AMPDU_SIZE) << 3)
 
 /* Number of symbols for a packet with (bps) bits per symbol */
-#define MCS_NSYMS(bps) DIV_ROUND_UP(MCS_NBITS, (bps))
+#define MCS_NSYMS(bps) __KERNEL_DIV_ROUND_UP(MCS_NBITS, (bps))
 
 /* Transmission time (nanoseconds) for a packet containing (syms) symbols */
 #define MCS_SYMBOL_TIME(sgi, syms)					\

@@ -729,7 +729,7 @@ struct mt76_testmode_ops {
 struct mt76_testmode_data {
 	enum mt76_testmode_state state;
 
-	u32 param_set[DIV_ROUND_UP(NUM_MT76_TM_ATTRS, 32)];
+	u32 param_set[__KERNEL_DIV_ROUND_UP(NUM_MT76_TM_ATTRS, 32)];
 	struct sk_buff *tx_skb;
 
 	u32 tx_count;
@@ -914,7 +914,7 @@ struct mt76_dev {
 	/* spinclock used to protect wcid pktid linked list */
 	spinlock_t status_lock;
 
-	u32 wcid_mask[DIV_ROUND_UP(MT76_N_WCIDS, 32)];
+	u32 wcid_mask[__KERNEL_DIV_ROUND_UP(MT76_N_WCIDS, 32)];
 
 	u64 vif_mask;
 

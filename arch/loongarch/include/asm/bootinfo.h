@@ -24,7 +24,7 @@ struct loongson_board_info {
 	const char *board_vendor;
 };
 
-#define NR_WORDS DIV_ROUND_UP(NR_CPUS, BITS_PER_LONG)
+#define NR_WORDS BITS_TO_LONGS(NR_CPUS)
 
 /*
  * The "core" of cores_per_node and cores_per_package stands for a

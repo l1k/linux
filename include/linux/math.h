@@ -2,6 +2,7 @@
 #ifndef _LINUX_MATH_H
 #define _LINUX_MATH_H
 
+#include <linux/log2.h>
 #include <linux/types.h>
 #include <asm/div64.h>
 #include <uapi/linux/kernel.h>
@@ -46,7 +47,10 @@
 #define DIV_ROUND_UP_POW2(n, d) \
 	((n) / (d) + !!((n) & ((d) - 1)))
 
-#define DIV_ROUND_UP __KERNEL_DIV_ROUND_UP
+#define DIV_ROUND_UP(n, d)						\
+	(__builtin_constant_p(d) && is_power_of_2(d)			\
+		? DIV_ROUND_UP_POW2(n, d)				\
+		: __KERNEL_DIV_ROUND_UP(n, d))
 
 #define DIV_ROUND_DOWN_ULL(ll, d) \
 	({ unsigned long long _tmp = (ll); do_div(_tmp, d); _tmp; })

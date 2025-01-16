@@ -820,8 +820,7 @@ enum pnfs_update_layout_reason {
 	PNFS_UPDATE_LAYOUT_EXIT,
 };
 
-#define NFS4_OP_MAP_NUM_LONGS					\
-	DIV_ROUND_UP(LAST_NFS4_OP, 8 * sizeof(unsigned long))
+#define NFS4_OP_MAP_NUM_LONGS BITS_TO_LONGS(LAST_NFS4_OP)
 #define NFS4_OP_MAP_NUM_WORDS \
 	(NFS4_OP_MAP_NUM_LONGS * sizeof(unsigned long) / sizeof(u32))
 struct nfs4_op_map {

@@ -50,8 +50,9 @@ union sidtab_entry_inner {
 #define SIDTAB_MAX	U32_MAX
 /* ensure enough tree levels for SIDTAB_MAX entries */
 #define SIDTAB_MAX_LEVEL                                                   \
-	DIV_ROUND_UP(SIDTAB_MAX_BITS - size_to_shift(SIDTAB_LEAF_ENTRIES), \
-		     SIDTAB_INNER_SHIFT)
+	__KERNEL_DIV_ROUND_UP(SIDTAB_MAX_BITS -				   \
+			      size_to_shift(SIDTAB_LEAF_ENTRIES),	   \
+			      SIDTAB_INNER_SHIFT)
 
 struct sidtab_node_leaf {
 	struct sidtab_entry entries[SIDTAB_LEAF_ENTRIES];

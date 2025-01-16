@@ -166,7 +166,7 @@ enum ptp_packet_state {
  *         whether that is of no interest.
  */
 struct efx_ptp_match {
-	u32 words[DIV_ROUND_UP(PTP_V1_UUID_LENGTH, 4)];
+	u32 words[__KERNEL_DIV_ROUND_UP(PTP_V1_UUID_LENGTH, 4)];
 	unsigned long expiry;
 	enum ptp_packet_state state;
 };

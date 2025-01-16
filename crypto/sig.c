@@ -104,7 +104,7 @@ static int sig_default_set_key(struct crypto_sig *tfm,
 
 static unsigned int sig_default_size(struct crypto_sig *tfm)
 {
-	return DIV_ROUND_UP_POW2(crypto_sig_keysize(tfm), BITS_PER_BYTE);
+	return DIV_ROUND_UP(crypto_sig_keysize(tfm), BITS_PER_BYTE);
 }
 
 static int sig_prepare_alg(struct sig_alg *alg)

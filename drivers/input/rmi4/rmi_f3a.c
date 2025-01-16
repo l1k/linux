@@ -10,7 +10,8 @@
 #include "rmi_driver.h"
 
 #define RMI_F3A_MAX_GPIO_COUNT		128
-#define RMI_F3A_MAX_REG_SIZE		DIV_ROUND_UP(RMI_F3A_MAX_GPIO_COUNT, 8)
+#define RMI_F3A_MAX_REG_SIZE		__KERNEL_DIV_ROUND_UP(		      \
+						     RMI_F3A_MAX_GPIO_COUNT, 8)
 
 /* Defs for Query 0 */
 #define RMI_F3A_GPIO_COUNT		0x7F

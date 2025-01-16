@@ -15,7 +15,7 @@
 #include "eeprom.h"
 #include "../mt76x02_phy.h"
 
-#define MT_MAP_READS	DIV_ROUND_UP(MT_EFUSE_USAGE_MAP_SIZE, 16)
+#define MT_MAP_READS	__KERNEL_DIV_ROUND_UP(MT_EFUSE_USAGE_MAP_SIZE, 16)
 static int
 mt76x0_efuse_physical_size_check(struct mt76x02_dev *dev)
 {

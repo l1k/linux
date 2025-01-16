@@ -49,7 +49,7 @@ struct vnic_rq_ctrl {
 #define VNIC_RQ_BUF_BLK_SZ(entries) \
 	(VNIC_RQ_BUF_BLK_ENTRIES(entries) * sizeof(struct vnic_rq_buf))
 #define VNIC_RQ_BUF_BLKS_NEEDED(entries) \
-	DIV_ROUND_UP(entries, VNIC_RQ_BUF_BLK_ENTRIES(entries))
+	__KERNEL_DIV_ROUND_UP(entries, VNIC_RQ_BUF_BLK_ENTRIES(entries))
 #define VNIC_RQ_BUF_BLKS_MAX VNIC_RQ_BUF_BLKS_NEEDED(4096)
 
 struct vnic_rq_buf {

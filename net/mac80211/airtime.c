@@ -16,7 +16,7 @@
 /* Number of kilo-symbols (symbols * 1024) for a packet with (bps) bits per
  * symbol. We use k-symbols to avoid rounding in the _TIME macros below.
  */
-#define MCS_N_KSYMS(bps) DIV_ROUND_UP(MCS_NBITS << 10, (bps))
+#define MCS_N_KSYMS(bps) __KERNEL_DIV_ROUND_UP(MCS_NBITS << 10, (bps))
 
 /* Transmission time (in 1024 * usec) for a packet containing (ksyms) * 1024
  * symbols.

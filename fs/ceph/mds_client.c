@@ -5010,7 +5010,8 @@ static void check_new_map(struct ceph_mds_client *mdsc,
 	int i, j, err;
 	int oldstate, newstate;
 	struct ceph_mds_session *s;
-	unsigned long targets[DIV_ROUND_UP(CEPH_MAX_MDS, sizeof(unsigned long))] = {0};
+	unsigned long targets[__KERNEL_DIV_ROUND_UP(CEPH_MAX_MDS,
+						    sizeof(unsigned long))] = {0};
 	struct ceph_client *cl = mdsc->fsc->client;
 
 	doutc(cl, "new %u old %u\n", newmap->m_epoch, oldmap->m_epoch);

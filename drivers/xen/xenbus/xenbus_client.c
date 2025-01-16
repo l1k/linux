@@ -49,7 +49,8 @@
 
 #include "xenbus.h"
 
-#define XENBUS_PAGES(_grants)	(DIV_ROUND_UP(_grants, XEN_PFN_PER_PAGE))
+#define XENBUS_PAGES(_grants)	(__KERNEL_DIV_ROUND_UP(_grants, \
+						       XEN_PFN_PER_PAGE))
 
 #define XENBUS_MAX_RING_PAGES	(XENBUS_PAGES(XENBUS_MAX_RING_GRANTS))
 

@@ -111,7 +111,8 @@ enum {
 			  sizeof(struct cpl_tx_pkt_core)) / sizeof(__be64),
 	ETHTXQ_MAX_FLITS = ETHTXQ_MAX_SGL_LEN + ETHTXQ_MAX_HDR,
 
-	ETHTXQ_STOP_THRES = 1 + DIV_ROUND_UP(ETHTXQ_MAX_FLITS, TXD_PER_EQ_UNIT),
+	ETHTXQ_STOP_THRES = 1 + __KERNEL_DIV_ROUND_UP(ETHTXQ_MAX_FLITS,
+						      TXD_PER_EQ_UNIT),
 
 	/*
 	 * Max TX descriptor space we allow for an Ethernet packet to be
