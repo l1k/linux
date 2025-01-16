@@ -693,8 +693,8 @@ static void __init test_bitmap_arr32(void)
 		}
 
 		if (nbits < EXP1_IN_BITS - 32)
-			expect_eq_uint(arr[DIV_ROUND_UP(nbits, 32)],
-								0xa5a5a5a5);
+			expect_eq_uint(arr[__KERNEL_DIV_ROUND_UP(nbits, 32)],
+				       0xa5a5a5a5);
 	}
 }
 
@@ -728,7 +728,8 @@ static void __init test_bitmap_arr64(void)
 		}
 
 		if (nbits < EXP1_IN_BITS - 64)
-			expect_eq_uint(arr[DIV_ROUND_UP(nbits, 64)], 0xa5a5a5a5);
+			expect_eq_uint(arr[__KERNEL_DIV_ROUND_UP(nbits, 64)],
+				       0xa5a5a5a5);
 	}
 }
 

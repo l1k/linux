@@ -734,7 +734,7 @@ int ethnl_parse_bitset(unsigned long *val, unsigned long *mask,
  * majority of bitmaps used by ethtool.
  */
 #define ETHNL_SMALL_BITMAP_BITS 128
-#define ETHNL_SMALL_BITMAP_WORDS DIV_ROUND_UP(ETHNL_SMALL_BITMAP_BITS, 32)
+#define ETHNL_SMALL_BITMAP_WORDS BITS_TO_U32(ETHNL_SMALL_BITMAP_BITS)
 
 int ethnl_bitset_size(const unsigned long *val, const unsigned long *mask,
 		      unsigned int nbits, ethnl_string_array_t names,

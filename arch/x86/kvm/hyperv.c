@@ -42,7 +42,8 @@
 #include "irq.h"
 #include "fpu.h"
 
-#define KVM_HV_MAX_SPARSE_VCPU_SET_BITS DIV_ROUND_UP(KVM_MAX_VCPUS, HV_VCPUS_PER_SPARSE_BANK)
+#define KVM_HV_MAX_SPARSE_VCPU_SET_BITS \
+	__KERNEL_DIV_ROUND_UP(KVM_MAX_VCPUS, HV_VCPUS_PER_SPARSE_BANK)
 
 /*
  * As per Hyper-V TLFS, extended hypercalls start from 0x8001

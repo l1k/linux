@@ -1797,8 +1797,8 @@ static inline u32 jbd2_chksum(journal_t *journal, u32 crc,
 			      const void *address, unsigned int length)
 {
 	DEFINE_RAW_FLEX(struct shash_desc, desc, __ctx,
-		DIV_ROUND_UP(JBD_MAX_CHECKSUM_SIZE,
-			     sizeof(*((struct shash_desc *)0)->__ctx)));
+		__KERNEL_DIV_ROUND_UP(JBD_MAX_CHECKSUM_SIZE,
+				      sizeof(*((struct shash_desc *)0)->__ctx)));
 	int err;
 
 	BUG_ON(crypto_shash_descsize(journal->j_chksum_driver) >

@@ -61,7 +61,7 @@ struct vnic_wq_buf {
 #define VNIC_WQ_BUF_BLK_SZ(entries) \
 	(VNIC_WQ_BUF_BLK_ENTRIES(entries) * sizeof(struct vnic_wq_buf))
 #define VNIC_WQ_BUF_BLKS_NEEDED(entries) \
-	DIV_ROUND_UP(entries, VNIC_WQ_BUF_BLK_ENTRIES(entries))
+	__KERNEL_DIV_ROUND_UP(entries, VNIC_WQ_BUF_BLK_ENTRIES(entries))
 #define VNIC_WQ_BUF_BLKS_MAX VNIC_WQ_BUF_BLKS_NEEDED(4096)
 
 struct vnic_wq {

@@ -84,7 +84,8 @@
 /* 2K buffers for DQO-QPL */
 #define GVE_TX_BUF_SIZE_DQO BIT(GVE_TX_BUF_SHIFT_DQO)
 #define GVE_TX_BUFS_PER_PAGE_DQO (PAGE_SIZE >> GVE_TX_BUF_SHIFT_DQO)
-#define GVE_MAX_TX_BUFS_PER_PKT (DIV_ROUND_UP(GVE_DQO_TX_MAX, GVE_TX_BUF_SIZE_DQO))
+#define GVE_MAX_TX_BUFS_PER_PKT (__KERNEL_DIV_ROUND_UP(GVE_DQO_TX_MAX, \
+						       GVE_TX_BUF_SIZE_DQO))
 
 /* If number of free/recyclable buffers are less than this threshold; driver
  * allocs and uses a non-qpl page on the receive path of DQO QPL to free

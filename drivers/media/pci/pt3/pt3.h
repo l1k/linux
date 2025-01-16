@@ -66,7 +66,7 @@ struct pt3_i2cbuf {
 
 #define DESCS_IN_PAGE (PAGE_SIZE / sizeof(struct xfer_desc))
 #define MAX_NUM_XFERS (MAX_DATA_BUFS * DATA_BUF_XFERS)
-#define MAX_DESC_BUFS DIV_ROUND_UP(MAX_NUM_XFERS, DESCS_IN_PAGE)
+#define MAX_DESC_BUFS __KERNEL_DIV_ROUND_UP(MAX_NUM_XFERS, DESCS_IN_PAGE)
 
 /* DMA transfer description.
  * device is passed a pointer to this struct, dma-reads it,

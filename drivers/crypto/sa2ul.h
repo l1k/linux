@@ -202,8 +202,7 @@ struct sa_crypto_data {
 	u16		sc_id_start;
 	u16		sc_id_end;
 	u16		sc_id;
-	unsigned long	ctx_bm[DIV_ROUND_UP(SA_MAX_NUM_CTX,
-				BITS_PER_LONG)];
+	unsigned long	ctx_bm[BITS_TO_LONGS(SA_MAX_NUM_CTX)];
 	struct sa_tfm_ctx	*ctx;
 	struct dma_chan		*dma_rx1;
 	struct dma_chan		*dma_rx2;

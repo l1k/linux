@@ -32,7 +32,7 @@ struct mst_intc_chip_data {
 	bool		no_eoi;
 #ifdef CONFIG_PM_SLEEP
 	struct list_head entry;
-	u16 saved_polarity_conf[DIV_ROUND_UP(MST_INTC_MAX_IRQS, 16)];
+	u16 saved_polarity_conf[__KERNEL_DIV_ROUND_UP(MST_INTC_MAX_IRQS, 16)];
 #endif
 };
 

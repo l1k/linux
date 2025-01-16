@@ -10,7 +10,7 @@ struct fwnode_handle;
 
 #define GPIO_BLOCK_SHIFT 5
 #define NMK_GPIO_PER_CHIP BIT(GPIO_BLOCK_SHIFT)
-#define NMK_MAX_BANKS DIV_ROUND_UP(512, NMK_GPIO_PER_CHIP)
+#define NMK_MAX_BANKS __KERNEL_DIV_ROUND_UP(512, NMK_GPIO_PER_CHIP)
 
 /* Register in the logic block */
 #define NMK_GPIO_DAT	0x00

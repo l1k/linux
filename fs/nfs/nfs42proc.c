@@ -1161,7 +1161,7 @@ out_put_src_lock:
 	return err;
 }
 
-#define NFS4XATTR_MAXPAGES DIV_ROUND_UP(XATTR_SIZE_MAX, PAGE_SIZE)
+#define NFS4XATTR_MAXPAGES __KERNEL_DIV_ROUND_UP(XATTR_SIZE_MAX, PAGE_SIZE)
 
 static int _nfs42_proc_removexattr(struct inode *inode, const char *name)
 {

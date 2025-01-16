@@ -47,7 +47,7 @@ enum {
 #define ES_IDX_STREAM		1
 #define ES_IDX_FIRST_FILENAME	2
 #define EXFAT_FILENAME_ENTRY_NUM(name_len) \
-	DIV_ROUND_UP(name_len, EXFAT_FILE_NAME_LEN)
+	__KERNEL_DIV_ROUND_UP(name_len, EXFAT_FILE_NAME_LEN)
 #define ES_IDX_LAST_FILENAME(name_len)	\
 	(ES_IDX_FIRST_FILENAME + EXFAT_FILENAME_ENTRY_NUM(name_len) - 1)
 
@@ -147,7 +147,8 @@ enum {
  * The 608 bytes are in 3 sectors at most (even 512 Byte sector).
  */
 #define DIR_CACHE_SIZE		\
-	(DIV_ROUND_UP(EXFAT_DEN_TO_B(ES_MAX_ENTRY_NUM), SECTOR_SIZE) + 1)
+	(__KERNEL_DIV_ROUND_UP(EXFAT_DEN_TO_B(ES_MAX_ENTRY_NUM), SECTOR_SIZE) \
+	 + 1)
 
 /* Superblock flags */
 #define EXFAT_FLAGS_SHUTDOWN	1

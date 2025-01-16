@@ -421,7 +421,7 @@ convert_link_ksettings_to_legacy_settings(
 
 /* number of 32-bit words to store the user's link mode bitmaps */
 #define __ETHTOOL_LINK_MODE_MASK_NU32			\
-	DIV_ROUND_UP(__ETHTOOL_LINK_MODE_MASK_NBITS, 32)
+	BITS_TO_U32(__ETHTOOL_LINK_MODE_MASK_NBITS)
 
 /* layout of the struct passed from/to userland */
 struct ethtool_link_usettings {

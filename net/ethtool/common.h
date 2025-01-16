@@ -6,7 +6,7 @@
 #include <linux/netdevice.h>
 #include <linux/ethtool.h>
 
-#define ETHTOOL_DEV_FEATURE_WORDS	DIV_ROUND_UP(NETDEV_FEATURE_COUNT, 32)
+#define ETHTOOL_DEV_FEATURE_WORDS	BITS_TO_U32(NETDEV_FEATURE_COUNT)
 
 /* compose link mode index from speed, type and duplex */
 #define ETHTOOL_LINK_MODE(speed, type, duplex) \

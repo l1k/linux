@@ -368,7 +368,7 @@ static const struct i2c_algo_bit_data falcon_i2c_bit_operations = {
 	.getscl		= falcon_getscl,
 	.udelay		= 5,
 	/* Wait up to 50 ms for target to let us pull SCL high */
-	.timeout	= DIV_ROUND_UP(HZ, 20),
+	.timeout	= __KERNEL_DIV_ROUND_UP(HZ, 20),
 };
 
 static void falcon_push_irq_moderation(struct ef4_channel *channel)

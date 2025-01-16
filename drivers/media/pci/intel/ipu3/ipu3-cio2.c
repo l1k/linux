@@ -350,8 +350,8 @@ static int cio2_hw_init(struct cio2_device *cio2, struct cio2_queue *q)
 	static const int NUM_VCS = 4;
 	static const int SID;	/* Stream id */
 	static const int ENTRY;
-	static const int FBPT_WIDTH = DIV_ROUND_UP(CIO2_MAX_LOPS,
-					CIO2_FBPT_SUBENTRY_UNIT);
+	static const int FBPT_WIDTH = __KERNEL_DIV_ROUND_UP(CIO2_MAX_LOPS,
+						 CIO2_FBPT_SUBENTRY_UNIT);
 	const u32 num_buffers1 = CIO2_MAX_BUFFERS - 1;
 	const struct ipu3_cio2_fmt *fmt;
 	void __iomem *const base = cio2->base;

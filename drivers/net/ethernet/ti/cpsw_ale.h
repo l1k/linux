@@ -154,7 +154,7 @@ enum cpsw_ale_port_state {
 #define ALE_MCAST_FWD_2			3
 
 #define ALE_ENTRY_BITS		68
-#define ALE_ENTRY_WORDS	DIV_ROUND_UP(ALE_ENTRY_BITS, 32)
+#define ALE_ENTRY_WORDS		BITS_TO_U32(ALE_ENTRY_BITS)
 
 struct cpsw_ale *cpsw_ale_create(struct cpsw_ale_params *params);
 

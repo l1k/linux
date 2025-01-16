@@ -71,7 +71,8 @@ int fdtv_write(struct firedtv *fdtv, u64 addr, void *data, size_t len)
 #define MAX_PACKET_SIZE		1024  /* 776, rounded up to 2^n */
 #define PACKETS_PER_PAGE	(PAGE_SIZE / MAX_PACKET_SIZE)
 #define N_PACKETS		64    /* buffer size */
-#define N_PAGES			DIV_ROUND_UP(N_PACKETS, PACKETS_PER_PAGE)
+#define N_PAGES			__KERNEL_DIV_ROUND_UP(N_PACKETS, \
+						      PACKETS_PER_PAGE)
 #define IRQ_INTERVAL		16
 
 struct fdtv_ir_context {

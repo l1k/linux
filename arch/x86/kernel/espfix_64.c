@@ -59,7 +59,8 @@ DEFINE_PER_CPU_READ_MOSTLY(unsigned long, espfix_waddr);
 static DEFINE_MUTEX(espfix_init_mutex);
 
 /* Page allocation bitmap - each page serves ESPFIX_STACKS_PER_PAGE CPUs */
-#define ESPFIX_MAX_PAGES  DIV_ROUND_UP(CONFIG_NR_CPUS, ESPFIX_STACKS_PER_PAGE)
+#define ESPFIX_MAX_PAGES	\
+	__KERNEL_DIV_ROUND_UP(CONFIG_NR_CPUS, ESPFIX_STACKS_PER_PAGE)
 static void *espfix_pages[ESPFIX_MAX_PAGES];
 
 static __page_aligned_bss pud_t espfix_pud_page[PTRS_PER_PUD]

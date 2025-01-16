@@ -82,9 +82,9 @@ static int nr_sih_modules;
 	.module		= TWL4030_MODULE_ ## modname, \
 	.control_offset = TWL4030_ ## modname ## _SIH_CTRL, \
 	.bits		= nbits, \
-	.bytes_ixr	= DIV_ROUND_UP(nbits, 8), \
+	.bytes_ixr	= BITS_TO_BYTES(nbits), \
 	.edr_offset	= TWL4030_ ## modname ## _EDR, \
-	.bytes_edr	= DIV_ROUND_UP((2*(nbits)), 8), \
+	.bytes_edr	= BITS_TO_BYTES(2*(nbits)), \
 	.irq_lines	= 2, \
 	.mask = { { \
 		.isr_offset	= TWL4030_ ## modname ## _ISR1, \

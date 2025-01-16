@@ -97,7 +97,7 @@
 #define ESR_D1	5
 
 #define PRNG_DATA_SIZE (160 / 8)
-#define PRNG_SEED_SIZE DIV_ROUND_UP(175, 8)
+#define PRNG_SEED_SIZE __KERNEL_DIV_ROUND_UP(175, 8)
 #define PRNG_LD BIT(17)
 
 #define CE_DIE_ID_SHIFT	16

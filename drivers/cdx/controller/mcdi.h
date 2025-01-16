@@ -204,7 +204,8 @@ int cdx_mcdi_wait_for_quiescence(struct cdx_mcdi *cdx,
  * are appropriately aligned, but 64-bit fields are only
  * 32-bit-aligned.
  */
-#define MCDI_DECLARE_BUF(_name, _len) struct cdx_dword _name[DIV_ROUND_UP(_len, 4)] = {{0}}
+#define MCDI_DECLARE_BUF(_name, _len)					\
+	struct cdx_dword _name[__KERNEL_DIV_ROUND_UP(_len, 4)] = {{0}}
 #define _MCDI_PTR(_buf, _offset)					\
 	((u8 *)(_buf) + (_offset))
 #define MCDI_PTR(_buf, _field)						\

@@ -3155,9 +3155,8 @@ int t4_get_exprom_version(struct adapter *adap, u32 *vers)
 	struct exprom_header {
 		unsigned char hdr_arr[16];	/* must start with 0x55aa */
 		unsigned char hdr_ver[4];	/* Expansion ROM version */
-	} *hdr;
-	u32 exprom_header_buf[DIV_ROUND_UP(sizeof(struct exprom_header),
-					   sizeof(u32))];
+	} __packed *hdr;
+	u32 exprom_header_buf[sizeof(struct exprom_header) / sizeof(u32)];
 	int ret;
 
 	ret = t4_read_flash(adap, FLASH_EXP_ROM_START,

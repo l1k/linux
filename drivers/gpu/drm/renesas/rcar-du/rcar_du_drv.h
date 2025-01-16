@@ -89,7 +89,7 @@ struct rcar_du_device_info {
 };
 
 #define RCAR_DU_MAX_CRTCS		4
-#define RCAR_DU_MAX_GROUPS		DIV_ROUND_UP(RCAR_DU_MAX_CRTCS, 2)
+#define RCAR_DU_MAX_GROUPS		__KERNEL_DIV_ROUND_UP(RCAR_DU_MAX_CRTCS, 2)
 #define RCAR_DU_MAX_VSPS		4
 #define RCAR_DU_MAX_LVDS		2
 #define RCAR_DU_MAX_DSI			2

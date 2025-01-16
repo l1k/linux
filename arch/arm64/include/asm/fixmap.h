@@ -43,7 +43,8 @@ enum fixed_addresses {
 	 * whether it crosses any page boundary.
 	 */
 	FIX_FDT_END,
-	FIX_FDT = FIX_FDT_END + DIV_ROUND_UP(MAX_FDT_SIZE, PAGE_SIZE) + 1,
+	FIX_FDT = FIX_FDT_END + __KERNEL_DIV_ROUND_UP(MAX_FDT_SIZE, PAGE_SIZE)
+		  + 1,
 
 	FIX_EARLYCON_MEM_BASE,
 	FIX_TEXT_POKE0,

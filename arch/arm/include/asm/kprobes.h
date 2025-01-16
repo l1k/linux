@@ -63,7 +63,8 @@ struct arch_optimized_insn {
 	 * copy of the original instructions.
 	 * Different from x86, ARM kprobe_opcode_t is u32.
 	 */
-#define MAX_COPIED_INSN	DIV_ROUND_UP(RELATIVEJUMP_SIZE, sizeof(kprobe_opcode_t))
+#define MAX_COPIED_INSN	__KERNEL_DIV_ROUND_UP(RELATIVEJUMP_SIZE, \
+					      sizeof(kprobe_opcode_t))
 	kprobe_opcode_t copied_insn[MAX_COPIED_INSN];
 	/* detour code buffer */
 	kprobe_opcode_t *insn;

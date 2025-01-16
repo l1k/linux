@@ -160,7 +160,7 @@ DEVICE_ATTR_SEC_REH_RO(sr);
 DEVICE_ATTR_SEC_REH_RO(pr);
 
 #define CSK_BIT_LEN		128U
-#define CSK_32ARRAY_SIZE	DIV_ROUND_UP(CSK_BIT_LEN, 32)
+#define CSK_32ARRAY_SIZE	__KERNEL_DIV_ROUND_UP(CSK_BIT_LEN, 32)
 
 static ssize_t
 show_canceled_csk(struct device *dev, u32 addr, char *buf)

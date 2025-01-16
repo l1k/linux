@@ -74,10 +74,10 @@ struct gic_chip_data {
 	void __iomem *raw_cpu_base;
 	u32 percpu_offset;
 #if defined(CONFIG_CPU_PM) || defined(CONFIG_ARM_GIC_PM)
-	u32 saved_spi_enable[DIV_ROUND_UP(1020, 32)];
-	u32 saved_spi_active[DIV_ROUND_UP(1020, 32)];
-	u32 saved_spi_conf[DIV_ROUND_UP(1020, 16)];
-	u32 saved_spi_target[DIV_ROUND_UP(1020, 4)];
+	u32 saved_spi_enable[__KERNEL_DIV_ROUND_UP(1020, 32)];
+	u32 saved_spi_active[__KERNEL_DIV_ROUND_UP(1020, 32)];
+	u32 saved_spi_conf[__KERNEL_DIV_ROUND_UP(1020, 16)];
+	u32 saved_spi_target[__KERNEL_DIV_ROUND_UP(1020, 4)];
 	u32 __percpu *saved_ppi_enable;
 	u32 __percpu *saved_ppi_active;
 	u32 __percpu *saved_ppi_conf;

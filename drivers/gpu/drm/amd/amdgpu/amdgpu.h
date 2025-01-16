@@ -516,7 +516,7 @@ struct amdgpu_wb {
 	volatile uint32_t	*wb;
 	uint64_t		gpu_addr;
 	u32			num_wb;	/* Number of wb slots actually reserved for amdgpu. */
-	unsigned long		used[DIV_ROUND_UP(AMDGPU_MAX_WB, BITS_PER_LONG)];
+	unsigned long		used[BITS_TO_LONGS(AMDGPU_MAX_WB)];
 	spinlock_t		lock;
 };
 

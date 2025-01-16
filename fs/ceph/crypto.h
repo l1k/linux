@@ -89,7 +89,7 @@ static inline u32 ceph_fscrypt_auth_len(struct ceph_fscrypt_auth *fa)
  */
 #define CEPH_NOHASH_NAME_MAX (180 - SHA256_DIGEST_SIZE)
 
-#define CEPH_BASE64_CHARS(nbytes) DIV_ROUND_UP((nbytes) * 4, 3)
+#define CEPH_BASE64_CHARS(nbytes) __KERNEL_DIV_ROUND_UP((nbytes) * 4, 3)
 
 int ceph_base64_encode(const u8 *src, int srclen, char *dst);
 int ceph_base64_decode(const char *src, int srclen, u8 *dst);

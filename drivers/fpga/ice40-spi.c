@@ -21,7 +21,7 @@
 #define ICE40_SPI_RESET_DELAY 1 /* us (>200ns) */
 #define ICE40_SPI_HOUSEKEEPING_DELAY 1200 /* us */
 
-#define ICE40_SPI_NUM_ACTIVATION_BYTES DIV_ROUND_UP(49, 8)
+#define ICE40_SPI_NUM_ACTIVATION_BYTES __KERNEL_DIV_ROUND_UP(49, 8)
 
 struct ice40_fpga_priv {
 	struct spi_device *dev;
