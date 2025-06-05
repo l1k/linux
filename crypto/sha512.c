@@ -404,7 +404,7 @@ static int __init crypto_sha512_mod_init(void)
 {
 	return crypto_register_shashes(algs, ARRAY_SIZE(algs));
 }
-module_init(crypto_sha512_mod_init);
+subsys_initcall(crypto_sha512_mod_init);
 
 static void __exit crypto_sha512_mod_exit(void)
 {
