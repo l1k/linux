@@ -1206,18 +1206,19 @@ void pci_resume_bus(struct pci_bus *bus)
 		pci_walk_bus(bus, pci_resume_one, NULL);
 }
 
-static int pci_dev_wait(struct pci_dev *dev, char *reset_type, int timeout)
+static bool pci_dev_ready(struct pci_dev *dev, struct pci_dev *root,
+			  struct pci_dev *bridge)
 {
-	int delay = 1;
-	bool retrain = false;
-	struct pci_dev *root, *bridge;
+	u32 id;
 
-	root = pcie_find_root_port(dev);
-
-	if (pci_is_pcie(dev)) {
-		bridge = pci_upstream_bridge(dev);
-		if (bridge)
-			retrain = true;
+	/*
+	 * Broadcom (LSI Logic) PEX 89000 PCIe switches spoof responses from a
+	 * placeholder device with ID 0x02b2 if the real device is not ready.
+	 */
+	if (bridge && bridge->vendor == PCI_VENDOR_ID_LSI_LOGIC) {
+		pci_read_config_dword(dev, PCI_VENDOR_ID, &id);
+		if (id == (PCI_VENDOR_ID_LSI_LOGIC | 0x02b2 << 16))
+			return false;
 	}
 
 	/*
@@ -1239,23 +1240,41 @@ static int pci_dev_wait(struct pci_dev *dev, char *reset_type, int timeout)
 	 * ID for VFs and non-existent devices also returns ~0, so read the
 	 * Command register until it returns something other than ~0.
 	 */
-	for (;;) {
-		u32 id;
+	if (root && root->config_rrs_sv) {
+		pci_read_config_dword(dev, PCI_VENDOR_ID, &id);
+		if (!pci_bus_rrs_vendor_id(id))
+			return true;
+	} else {
+		pci_read_config_dword(dev, PCI_COMMAND, &id);
+		if (!PCI_POSSIBLE_ERROR(id))
+			return true;
+	}
 
+	return false;
+}
+
+static int pci_dev_wait(struct pci_dev *dev, char *reset_type, int timeout)
+{
+	int delay = 1;
+	bool retrain = false;
+	struct pci_dev *root, *bridge = NULL;
+
+	root = pcie_find_root_port(dev);
+
+	if (pci_is_pcie(dev)) {
+		bridge = pci_upstream_bridge(dev);
+		if (bridge)
+			retrain = true;
+	}
+
+	for (;;) {
 		if (pci_dev_is_disconnected(dev)) {
 			pci_dbg(dev, "disconnected; not waiting\n");
 			return -ENOTTY;
 		}
 
-		if (root && root->config_rrs_sv) {
-			pci_read_config_dword(dev, PCI_VENDOR_ID, &id);
-			if (!pci_bus_rrs_vendor_id(id))
-				break;
-		} else {
-			pci_read_config_dword(dev, PCI_COMMAND, &id);
-			if (!PCI_POSSIBLE_ERROR(id))
-				break;
-		}
+		if (pci_dev_ready(dev, root, bridge))
+			break;
 
 		if (delay > timeout) {
 			pci_warn(dev, "not ready %dms after %s; giving up\n",
