@@ -830,8 +830,8 @@ static void pcie_aspm_override_default_link_state(struct pcie_link_state *link)
 static void pcie_aspm_cap_init(struct pcie_link_state *link, int blacklist)
 {
 	struct pci_dev *child = link->downstream, *parent = link->pdev;
+	u16 parent_lnkctl, child_lnkctl, one_sided;
 	u32 parent_lnkcap, child_lnkcap;
-	u16 parent_lnkctl, child_lnkctl;
 	struct pci_bus *linkbus = parent->subordinate;
 
 	if (blacklist) {
@@ -871,6 +871,18 @@ static void pcie_aspm_cap_init(struct pcie_link_state *link, int blacklist)
 					   child_lnkctl & ~PCI_EXP_LNKCTL_ASPMC);
 		pcie_capability_write_word(parent, PCI_EXP_LNKCTL,
 					   parent_lnkctl & ~PCI_EXP_LNKCTL_ASPMC);
+	}
+
+	/* Leave L0s/L1 disabled if configured incorrectly by BIOS */
+	one_sided = FIELD_GET(PCI_EXP_LNKCTL_ASPMC, child_lnkctl) ^
+		    FIELD_GET(PCI_EXP_LNKCTL_ASPMC, parent_lnkctl);
+	if (one_sided) {
+		pci_info(child, FW_BUG "ASPM: %s%s"
+			 "not enabled on both ends of the link, disabling\n",
+			 one_sided & PCI_EXP_LNKCTL_ASPM_L0S ? "L0s " : "",
+			 one_sided & PCI_EXP_LNKCTL_ASPM_L1 ? "L1 " : "");
+		parent_lnkctl &= ~one_sided;
+		child_lnkctl &= ~one_sided;
 	}
 
 	/*
