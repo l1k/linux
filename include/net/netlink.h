@@ -115,6 +115,8 @@
  *                 padattr)		add msecs attribute to skb
  *   nla_put_in_addr(skb, type, addr)	add IPv4 address attribute to skb
  *   nla_put_in6_addr(skb, type, addr)	add IPv6 address attribute to skb
+ *   nla_put_blob(skb, type, blob,
+ *                bloblen)		add zero-copy blob attribute to skb
  *
  * Nested Attributes Construction:
  *   nla_nest_start(skb, type)		start a nested attribute
@@ -569,6 +571,7 @@ int nla_put_64bit(struct sk_buff *skb, int attrtype, int attrlen,
 		  const void *data, int padattr);
 int nla_put_nohdr(struct sk_buff *skb, int attrlen, const void *data);
 int nla_append(struct sk_buff *skb, int attrlen, const void *data);
+int nla_put_blob(struct sk_buff *skb, int attrtype, void *blob, size_t bloblen);
 
 /**************************************************************************
  * Netlink Messages
@@ -1080,7 +1083,13 @@ static inline struct sk_buff *nlmsg_new_large(size_t payload)
  */
 static inline void nlmsg_end(struct sk_buff *skb, struct nlmsghdr *nlh)
 {
+	struct skb_shared_info *shinfo = skb_shinfo(skb);
+	int i;
+
 	nlh->nlmsg_len = skb_tail_pointer(skb) - (unsigned char *)nlh;
+
+	for (i = 0; i < shinfo->nr_frags; i++)
+		nlh->nlmsg_len += shinfo->frags[i].len;
 }
 
 /**

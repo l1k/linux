@@ -248,6 +248,7 @@ struct nlattr {
 #define NLA_ALIGNTO		4
 #define NLA_ALIGN(len)		(((len) + NLA_ALIGNTO - 1) & ~(NLA_ALIGNTO - 1))
 #define NLA_HDRLEN		((int) NLA_ALIGN(sizeof(struct nlattr)))
+#define NLA_MAX_PAYLOAD		((__u16)~0 - NLA_HDRLEN)
 
 /* Generic 32 bitflags attribute content sent to the kernel.
  *

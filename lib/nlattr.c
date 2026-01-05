@@ -1166,4 +1166,73 @@ int nla_append(struct sk_buff *skb, int attrlen, const void *data)
 	return 0;
 }
 EXPORT_SYMBOL(nla_append);
+
+/**
+ * nla_put_blob - Add a zero-copy blob netlink attribute to a socket buffer
+ * @skb: socket buffer to add attribute to
+ * @attrtype: attribute type
+ * @blob: attribute payload
+ * @bloblen: length of attribute payload
+ *
+ * Add a netlink attribute header to the linear data of @skb and attach @blob
+ * as fragment data.  Conceptually the fragment data succeeds the linear data,
+ * hence the fragments of @blob succeed the newly added attribute header.
+ * No other attribute may be added to @skb after having called this function.
+ *
+ * Intended for large binary objects which exceed the linear data size or
+ * for which the copy overhead shall be avoided.
+ *
+ * @blob is expected to be allocated with vmalloc().  It is legal to call
+ * vfree() after having called this function.  The pages backing @blob
+ * remain pinned until the last recipient has consumed @skb.
+ *
+ * Maximum payload size of a netlink attribute is 65531 bytes.  Additionally
+ * the maximum number of attachable page fragments is limited at compile time
+ * by MAX_SKB_FRAGS.  Hence if @bloblen exceeds MAX_SKB_FRAGS * PAGE_SIZE or
+ * NLA_MAX_PAYLOAD, @blob must be split across multiple netlink messages with
+ * one blob attribute each.
+ *
+ * Returns the number of bytes of @blob which have been attached to @skb.
+ * If @bloblen is larger, just call this function again with a new netlink
+ * message after advancing the @blob pointer by the returned number of bytes
+ * and reducing @bloblen by that same number.
+ *
+ * Returns -EEXIST if fragments have already been attached to @skb.
+ *
+ * Returns -EMSGSIZE if the tailroom of the @skb is insufficient to store
+ * the attribute payload.
+ */
+int nla_put_blob(struct sk_buff *skb, int attrtype, void *blob, size_t bloblen)
+{
+	size_t remaining = min(bloblen, NLA_MAX_PAYLOAD);
+	struct nlattr *nla;
+	void *pos = blob;
+	int i;
+
+	if (skb_shinfo(skb)->nr_frags)
+		return -EEXIST;
+
+	nla = nla_reserve(skb, attrtype, 0);
+	if (unlikely(!nla))
+		return -EMSGSIZE;
+
+	for (i = 0; i < MAX_SKB_FRAGS; i++) {
+		struct page *page = vmalloc_to_page(pos);
+		size_t off = offset_in_page(pos);
+		size_t sz = min(PAGE_SIZE - off, remaining);
+
+		get_page(page);
+		skb_add_rx_frag(skb, i, page, off, sz, sz);
+
+		pos += sz;
+		remaining -= sz;
+
+		if (!remaining)
+			break;
+	}
+
+	nla->nla_len += pos - blob;
+	return pos - blob;
+}
+EXPORT_SYMBOL(nla_put_blob);
 #endif
