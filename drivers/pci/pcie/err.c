@@ -253,9 +253,7 @@ pci_ers_result_t pcie_do_recovery(struct pci_dev *dev,
 			pci_warn(bridge, "subordinate device reset failed\n");
 			goto failed;
 		}
-	}
 
-	if (status == PCI_ERS_RESULT_NEED_RESET) {
 		/*
 		 * TODO: Should call platform-specific
 		 * functions to reset slot before calling
