@@ -62,7 +62,9 @@ static int report_error_detected(struct pci_dev *dev,
 		pci_info(dev, "can't recover (state transition %u -> %u invalid)\n",
 			dev->error_state, state);
 		vote = PCI_ERS_RESULT_NONE;
-	} else if (!pdrv || !pdrv->err_handler ||
+	} else if (!pdrv) {
+		vote = PCI_ERS_RESULT_NONE;
+	} else if (!pdrv->err_handler ||
 		   !pdrv->err_handler->error_detected) {
 		/*
 		 * If any device in the subtree does not have an error_detected
@@ -153,8 +155,11 @@ static int report_slot_reset(struct pci_dev *dev, void *data)
 
 	device_lock(&dev->dev);
 	pdrv = dev->driver;
-	if (!pci_dev_set_io_state(dev, pci_channel_io_normal) ||
-	    !pdrv || !pdrv->err_handler || !pdrv->err_handler->slot_reset)
+	if (!pci_dev_set_io_state(dev, pci_channel_io_normal))
+		goto out;
+	if (!pdrv)
+		pci_restore_state(dev);
+	if (!pdrv || !pdrv->err_handler || !pdrv->err_handler->slot_reset)
 		goto out;
 
 	err_handler = pdrv->err_handler;
