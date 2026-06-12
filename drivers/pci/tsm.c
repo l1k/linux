@@ -12,6 +12,7 @@
 #include <linux/pci.h>
 #include <linux/pci-doe.h>
 #include <linux/pci-tsm.h>
+#include <linux/pm_runtime.h>
 #include <linux/sysfs.h>
 #include <linux/tsm.h>
 #include <linux/xarray.h>
@@ -886,6 +887,7 @@ int pci_tsm_doe_transfer(struct pci_dev *pdev, u8 type, const void *req,
 			 size_t req_sz, void *resp, size_t resp_sz)
 {
 	struct pci_tsm_pf0 *tsm;
+	int rc;
 
 	if (!pdev->tsm || !is_pci_tsm_pf0(pdev))
 		return -ENXIO;
@@ -893,6 +895,10 @@ int pci_tsm_doe_transfer(struct pci_dev *pdev, u8 type, const void *req,
 	tsm = to_pci_tsm_pf0(pdev->tsm);
 	if (!tsm->doe_mb)
 		return -ENXIO;
+
+	PM_RUNTIME_ACQUIRE(&pdev->dev, pm);
+	if ((rc = PM_RUNTIME_ACQUIRE_ERR(&pm)))
+		return rc;
 
 	return pci_doe(tsm->doe_mb, PCI_VENDOR_ID_PCI_SIG, type, req, req_sz,
 		       resp, resp_sz);

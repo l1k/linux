@@ -7,6 +7,7 @@
 #include <linux/tsm.h>
 #include <linux/iommu.h>
 #include <linux/pci-doe.h>
+#include <linux/pm_runtime.h>
 #include <linux/bitfield.h>
 #include <linux/module.h>
 
@@ -30,6 +31,7 @@ static int sev_tio_spdm_cmd(struct tio_dsm *dsm, int ret)
 {
 	struct tsm_dsm_tio *dev_data = &dsm->data;
 	struct tsm_spdm *spdm = &dev_data->spdm;
+	int pm_ret;
 
 	/* Check the main command handler response before entering the loop */
 	if (ret == 0 && dev_data->psp_ret != SEV_RET_SUCCESS)
@@ -37,6 +39,10 @@ static int sev_tio_spdm_cmd(struct tio_dsm *dsm, int ret)
 
 	if (ret <= 0)
 		return ret;
+
+	PM_RUNTIME_ACQUIRE(&dsm->tsm.base_tsm.pdev->dev, pm);
+	if ((pm_ret = PM_RUNTIME_ACQUIRE_ERR(&pm)))
+		return pm_ret;
 
 	/* ret > 0 means "SPDM requested" */
 	while (ret == PCI_DOE_FEATURE_CMA || ret == PCI_DOE_FEATURE_SSESSION) {
