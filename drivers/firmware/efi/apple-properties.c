@@ -46,6 +46,36 @@ struct properties_header {
 	struct dev_header dev_header[];
 };
 
+static const char igpu_path[] __initconst = {
+	/* ACPI Device Path _HID PNP0A03 */
+	0x02, 0x01, 0x0c, 0x00, 0xd0, 0x41, 0x03, 0x0a, 0x00, 0x00, 0x00, 0x00,
+	/* PCI Device Path 0000:00:02.0 */
+	0x01, 0x01, 0x06, 0x00, 0x00, 0x02,
+	/* End of Hardware Device Path */
+	0x7f, 0xff, 0x04, 0x00
+};
+
+static bool __init is_disabled_device(void *dev, struct dev_header *dev_header)
+{
+	size_t len = dev_header->len - sizeof(*dev_header);
+
+	if (PTR_ERR(dev) != -ENODEV)
+		return false;
+
+	/*
+	 * iMac and MacBook Pro firmware exposes device properties for the
+	 * integrated GPU even when it's disabled in favor of the discrete GPU
+	 */
+	if (len == ARRAY_SIZE(igpu_path) &&
+	    !memcmp(dev_header->path, igpu_path, ARRAY_SIZE(igpu_path))) {
+		pr_info("ignoring %u device properties of disabled iGPU\n",
+			dev_header->prop_count);
+		return true;
+	}
+
+	return false;
+}
+
 static void __init unmarshal_key_value_pairs(struct dev_header *dev_header,
 					     struct device *dev, const void *ptr,
 					     struct property_entry entry[])
@@ -137,6 +167,10 @@ static int __init unmarshal_devices(struct properties_header *properties)
 		len = dev_header->len - sizeof(*dev_header);
 
 		dev = efi_get_device_by_path(&ptr, &len);
+		if (is_disabled_device(dev, dev_header)) {
+			dev = NULL;
+			goto skip_device;
+		}
 		if (IS_ERR(dev)) {
 			pr_err("device path parse error %ld at %#zx:\n",
 			       PTR_ERR(dev), (void *)ptr - (void *)dev_header);
