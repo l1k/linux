@@ -240,21 +240,15 @@ static void dpc_process_rp_pio_error(struct pci_dev *pdev)
 static int dpc_get_aer_uncorrect_severity(struct pci_dev *dev,
 					  struct aer_err_info *info)
 {
-	int pos = dev->aer_cap;
-	u32 status, mask, sev;
+	u16 devsta;
 
-	pci_read_config_dword(dev, pos + PCI_ERR_UNCOR_STATUS, &status);
-	pci_read_config_dword(dev, pos + PCI_ERR_UNCOR_MASK, &mask);
-	status &= ~mask;
-	if (!status)
-		return 0;
-
-	pci_read_config_dword(dev, pos + PCI_ERR_UNCOR_SEVER, &sev);
-	status &= sev;
-	if (status)
+	pcie_capability_read_word(dev, PCI_EXP_DEVSTA, &devsta);
+	if (devsta & PCI_EXP_DEVSTA_FED)
 		info->severity = AER_FATAL;
-	else
+	else if (devsta & PCI_EXP_DEVSTA_NFED)
 		info->severity = AER_NONFATAL;
+	else
+		return 0;
 
 	info->level = KERN_ERR;
 
@@ -279,7 +273,7 @@ void dpc_process_error(struct pci_dev *pdev)
 		pci_warn(pdev, "containment event, status:%#06x: unmasked uncorrectable error detected\n",
 			 status);
 		if (dpc_get_aer_uncorrect_severity(pdev, &info) &&
-		    aer_get_device_error_info(&info, 0)) {
+		    (aer_get_device_error_info(&info, 0) || !pdev->aer_cap)) {
 			aer_print_error(&info, 0);
 			pci_aer_clear_nonfatal_status(pdev);
 			pci_aer_clear_fatal_status(pdev);
@@ -357,6 +351,9 @@ static bool dpc_is_surprise_removal(struct pci_dev *pdev)
 	u16 status;
 
 	if (!pdev->is_hotplug_bridge)
+		return false;
+
+	if (!pdev->aer_cap)
 		return false;
 
 	if (pci_read_config_word(pdev, pdev->aer_cap + PCI_ERR_UNCOR_STATUS,
