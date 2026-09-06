@@ -302,7 +302,7 @@ TRACE_EVENT(non_standard_event,
  *			([domain:]bus:device.function).
  * u32 status -		Either the correctable or uncorrectable register
  *			indicating what error or errors have been seen
- * u8 severity -	error severity 0:NONFATAL 1:FATAL 2:CORRECTED
+ * u8 severity -	error severity 0:CORRECTED 1:NONFATAL 2:FATAL
  */
 
 #define aer_correctable_errors					\

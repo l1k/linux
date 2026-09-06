@@ -11,10 +11,13 @@
 #include <linux/errno.h>
 #include <linux/types.h>
 
-#define AER_NONFATAL			0
-#define AER_FATAL			1
-#define AER_CORRECTABLE			2
-#define DPC_FATAL			3
+/*
+ * Must match bit number in Device Status Register (PCIe r7.0 sec 7.5.3.5);
+ * Happens to match code of Error Signaling Messages (PCIe r7.0 sec 2.2.8.3)
+ */
+#define AER_CORRECTABLE			0
+#define AER_NONFATAL			1
+#define AER_FATAL			2
 
 /*
  * AER and DPC capabilities TLP Logging register sizes (PCIe r6.2, sec 7.8.4
