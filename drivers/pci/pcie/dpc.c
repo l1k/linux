@@ -21,6 +21,10 @@
 #define PCI_EXP_DPC_CTL_EN_MASK	(PCI_EXP_DPC_CTL_EN_FATAL | \
 				 PCI_EXP_DPC_CTL_EN_NONFATAL)
 
+#define PCI_EXP_DEVSTA_UNC_MASK	(PCI_EXP_DEVSTA_NFED | \
+				 PCI_EXP_DEVSTA_FED | \
+				 PCI_EXP_DEVSTA_URD)
+
 static const char * const rp_pio_error_string[] = {
 	"Configuration Request received UR Completion",	 /* Bit Position 0  */
 	"Configuration Request received CA Completion",	 /* Bit Position 1  */
@@ -279,6 +283,8 @@ void dpc_process_error(struct pci_dev *pdev)
 			aer_print_error(&info, 0);
 			pci_aer_clear_nonfatal_status(pdev);
 			pci_aer_clear_fatal_status(pdev);
+			pcie_capability_write_word(pdev, PCI_EXP_DEVSTA,
+						   PCI_EXP_DEVSTA_UNC_MASK);
 		}
 		break;
 	case PCI_EXP_DPC_STATUS_TRIGGER_RSN_NFE:
