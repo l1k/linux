@@ -5508,9 +5508,9 @@ static void pci_bus_save_and_disable_locked(struct pci_bus *bus)
 	struct pci_dev *dev;
 
 	list_for_each_entry(dev, &bus->devices, bus_list) {
-		pci_dev_save_and_disable(dev);
 		if (dev->subordinate)
 			pci_bus_save_and_disable_locked(dev->subordinate);
+		pci_dev_save_and_disable(dev);
 	}
 }
 
@@ -5543,9 +5543,9 @@ static void pci_slot_save_and_disable_locked(struct pci_slot *slot)
 	list_for_each_entry(dev, &slot->bus->devices, bus_list) {
 		if (!dev->slot || dev->slot != slot)
 			continue;
-		pci_dev_save_and_disable(dev);
 		if (dev->subordinate)
 			pci_bus_save_and_disable_locked(dev->subordinate);
+		pci_dev_save_and_disable(dev);
 	}
 }
 
